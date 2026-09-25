@@ -1,36 +1,73 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# One Coco
 
-## Getting Started
+On-demand fresh coconut delivery to tourists on the beach. Launching in
+Montego Bay, Jamaica.
 
-First, run the development server:
+> **The brand name is not final.** The codebase is built name-agnostic: the
+> literal name appears in `lib/brand.ts` and nowhere else, and the logo lockup
+> is `components/ui/Wordmark.tsx`. A rename is those two files.
 
-```bash
+## Where things are
+
+| Path | What |
+|---|---|
+| `docs/ARCHITECTURE.md` | **Read this first.** Phase 0 — architecture, schema, flows, roadmap, risks, open questions. |
+| `PHASE-1-NOTES.md` | Phase 1 close-out: what shipped, what was fixed, known gaps. |
+| `app/` | Next.js App Router. `(marketing)` pages today. |
+| `components/` | `ui/` primitives, `site/` chrome, `marketing/` sections. |
+| `lib/brand.ts` | The only file containing the brand name. |
+| `supabase/migrations/` | Schema. 7 migrations, applied in filename order. |
+| `supabase/seed/jamaica.sql` | Montego Bay pilot configuration. Idempotent. |
+
+## Running it
+
+```
+npm install
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+No environment variables are required for the marketing site. Copy
+`.env.example` to `.env.local` when you need to point at a database.
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+Port 3000 is often taken on the original dev machine, so `.claude/launch.json`
+uses 3100. `npm run dev` on its own uses 3000 as normal.
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+## Status
 
-## Learn More
+| Phase | State |
+|---|---|
+| 0 — Architecture | Done. `docs/ARCHITECTURE.md`. |
+| 1 — Brand + landing | Done, verified at 375px and 1280px. |
+| 2 — Schema, zones, catalogue | **Migrations written, NOT YET APPLIED to any database.** |
+| 3+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
 
-To learn more about Next.js, take a look at the following resources:
+### Picking up Phase 2 on another machine
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+The migrations have never been run. They are unverified SQL until they are.
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+```
+npx supabase login
+npx supabase link --project-ref <your-project-ref>
+npx supabase db push
+```
 
-## Deploy on Vercel
+Then run `supabase/seed/jamaica.sql` against the project.
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+Things to check the first time they run, because they are the parts most
+likely to bite:
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- PostGIS resolves — the migrations install it into the `extensions` schema and
+  set `search_path` accordingly.
+- `auth.users` exists (it does on Supabase; `app_users` references it).
+- The seed leaves the delivery zone **`CLOSED`** on purpose. Its polygon is a
+  placeholder rectangle, not a surveyed boundary, and there is no confirmed
+  vending permission for the beach yet.
+- Tax is seeded at **0**, deliberately — a wrong non-zero rate silently
+  overcharges every customer.
+
+## Conventions
+
+- Money is integer cents, everywhere. Never floats.
+- No price is ever a literal in application code.
+- Mobile first. Verify at 375px before desktop.
+- Nothing is described as working until it has been run.
