@@ -3,6 +3,7 @@ import { resolveZone } from "@/lib/geo/zones";
 import { checkServiceability } from "@/lib/pricing/serviceability";
 import { buildQuote, QuoteError, type CartItem } from "@/lib/pricing/quote";
 import { getSettings } from "@/lib/settings";
+import { clientIp, isRateLimited } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -18,6 +19,12 @@ function isFiniteNumber(value: unknown): value is number {
 
 /** §13 `POST /api/v1/quote` — cart → persisted quote. */
 export async function POST(request: Request) {
+  // §16: re-quoting on every cart edit is normal, legitimate traffic —
+  // generous enough not to interfere with that, still a real ceiling.
+  if (isRateLimited(`quote:${clientIp(request)}`, 60, 60_000)) {
+    return NextResponse.json({ error: "too many requests" }, { status: 429 });
+  }
+
   let body: QuoteBody;
   try {
     body = await request.json();

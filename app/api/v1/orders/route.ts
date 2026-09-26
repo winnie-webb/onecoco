@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { createOrder, OrderCreationError } from "@/lib/orders/create";
+import { clientIp, isRateLimited } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -36,6 +37,13 @@ const ORDER_CREATION_ERROR_STATUS: Record<string, number> = {
 
 /** §13 `POST /api/v1/orders` — create order (idempotency key required). */
 export async function POST(request: Request) {
+  // §16: named explicitly alongside /quote, /demand, /track. A double-tap
+  // retry on a laggy connection is a handful of requests, not tens — the
+  // idempotency key already makes a retry safe, this just caps abuse.
+  if (isRateLimited(`orders:${clientIp(request)}`, 10, 60_000)) {
+    return NextResponse.json({ error: "too many requests" }, { status: 429 });
+  }
+
   let body: OrdersBody;
   try {
     body = await request.json();

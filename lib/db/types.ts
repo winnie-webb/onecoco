@@ -1944,10 +1944,12 @@ export type Database = {
         Args: { p_beach_id: string; p_lat: number; p_lng: number };
         Returns: number;
       };
+      promote_scheduled_orders: { Args: Record<PropertyKey, never>; Returns: string[] };
       runner_distance_to_point: {
         Args: { p_lat: number; p_lng: number; p_max_age_s?: number; p_runner_id: string };
         Returns: number;
       };
+      truncate_stale_order_locations: { Args: Record<PropertyKey, never>; Returns: number };
       zones_covering_point: {
         Args: { p_lat: number; p_lng: number };
         Returns: {

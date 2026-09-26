@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { serviceClient } from "@/lib/db/client";
 import { siteUrl } from "@/lib/brand";
+import { clientIp, isRateLimited } from "@/lib/security/rate-limit";
 
 export const dynamic = "force-dynamic";
 
@@ -39,6 +40,13 @@ function isFiniteNumber(value: unknown): value is number {
 }
 
 export async function POST(request: Request) {
+  // §16: same vague success on every failure mode, rate limiting included —
+  // a bot that floods this learns nothing different than one that trips
+  // the honeypot.
+  if (isRateLimited(`demand:${clientIp(request)}`, 10, 60_000)) {
+    return vagueOk();
+  }
+
   const origin = request.headers.get("origin");
   if (origin && new URL(origin).origin !== new URL(siteUrl).origin) {
     return vagueOk();

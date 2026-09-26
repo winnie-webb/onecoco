@@ -7,6 +7,7 @@ import type { StaffSession } from "@/lib/auth/guards";
 
 const NAV = [
   { href: "/admin/orders", label: "Orders" },
+  { href: "/admin/analytics", label: "Analytics" },
   { href: "/admin/zones", label: "Zones" },
   { href: "/admin/products", label: "Products" },
   { href: "/admin/runners", label: "Runners" },
