@@ -30,11 +30,13 @@ export function CheckoutFlow({
   lat,
   lng,
   accuracyM,
+  qrCode,
 }: {
   products: CatalogueProductWithCustomizations[];
   lat: number;
   lng: number;
   accuracyM: number | null;
+  qrCode?: string;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("picking");
@@ -89,6 +91,7 @@ export function CheckoutFlow({
           customerDescription: customerDescription || undefined,
           location: { lat, lng, accuracyM: accuracyM ?? undefined },
           paymentProvider,
+          qrCode,
         }),
       });
       const order = await orderRes.json();

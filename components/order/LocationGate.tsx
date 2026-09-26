@@ -41,7 +41,7 @@ const REASON_COPY: Record<string, string> = {
   OUT_OF_STOCK: "we're out of coconuts to prep right now",
 };
 
-export function LocationGate({ products }: { products: CatalogueProductWithCustomizations[] }) {
+export function LocationGate({ products, qrCode }: { products: CatalogueProductWithCustomizations[]; qrCode?: string }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [result, setResult] = useState<ResolveResponse | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number; accuracyM: number | null } | null>(null);
@@ -228,7 +228,7 @@ export function LocationGate({ products }: { products: CatalogueProductWithCusto
                 {result.etaMinMinutes}–{result.etaMaxMinutes} minutes.
               </p>
               <div className="mt-6">
-                <CheckoutFlow products={products} lat={coords.lat} lng={coords.lng} accuracyM={coords.accuracyM} />
+                <CheckoutFlow products={products} lat={coords.lat} lng={coords.lng} accuracyM={coords.accuracyM} qrCode={qrCode} />
               </div>
             </div>
           )}

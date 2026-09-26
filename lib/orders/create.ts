@@ -7,6 +7,7 @@ import { getSettings } from "@/lib/settings";
 import { assertFulfillmentTransition, type PaymentStatus } from "@/lib/orders/state";
 import { sendNotification } from "@/lib/notifications/transport";
 import { createOffersForOrder } from "@/lib/dispatch/offers";
+import { resolveQrCode } from "@/lib/growth/qr";
 
 export class OrderCreationError extends Error {
   constructor(
@@ -27,6 +28,12 @@ export interface CreateOrderInput {
   deliveryNote?: string;
   location?: { lat: number; lng: number; accuracyM?: number };
   paymentProvider: "mock" | "cash";
+  /** §2: "one table and one URL parameter." Unresolvable/expired/inactive
+   * codes are silently ignored — attribution never blocks a checkout. */
+  qrCode?: string;
+  /** §2's group/scheduled orders. A future timestamp holds the order out
+   * of dispatch until it arrives — see the dispatch gate below. */
+  scheduledFor?: string;
 }
 
 export interface CreatedOrder {
@@ -139,6 +146,14 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
   const isCash = input.paymentProvider === "cash";
   const acceptDeadlineAt = new Date(Date.now() + settings.acceptWindowMinutes * 60_000);
 
+  const attribution = input.qrCode ? await resolveQrCode(input.qrCode) : null;
+  const scheduledFor = input.scheduledFor ? new Date(input.scheduledFor) : null;
+  // Scheduled orders sit out of dispatch until their time arrives — no
+  // sweep job exists yet to release them automatically (documented as a
+  // Phase 10 gap in PHASE-9-NOTES.md), so dispatch below only fires for
+  // orders with no schedule, or one already in the past.
+  const isDispatchableNow = !scheduledFor || scheduledFor.getTime() <= Date.now();
+
   // §7: ETA is persisted at order time so the displayed promise can't
   // silently drift, and on-time rate is measurable later. Falls back to the
   // zone's configured bounds (no travel term) when checkout didn't carry a
@@ -176,6 +191,10 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
       accept_deadline_at: acceptDeadlineAt.toISOString(),
       promised_eta_min_at: promisedEtaMinAt.toISOString(),
       promised_eta_max_at: promisedEtaMaxAt.toISOString(),
+      partner_id: attribution?.partnerId ?? null,
+      qr_code_id: attribution?.qrCodeId ?? null,
+      campaign_id: attribution?.campaignId ?? null,
+      scheduled_for: scheduledFor?.toISOString() ?? null,
     })
     .select("id, order_number, delivery_code, payment_status")
     .single();
@@ -220,9 +239,14 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
     });
   }
 
-  if (isCash) {
+  if (isCash && isDispatchableNow) {
     // Cash is confirmed and dispatchable immediately — it never passes
-    // through PAID (§4.3).
+    // through PAID (§4.3). A SCHEDULED cash order (§9's group orders)
+    // deliberately stays PLACED instead: promoting it to AWAITING_RUNNER
+    // hours early would falsely trip orders_at_risk's accept-window check
+    // (0010_at_risk_view.sql) long before anyone should be looking for a
+    // runner. No sweep job exists yet to promote it when its time
+    // arrives — documented as a Phase 10 gap in PHASE-9-NOTES.md.
     assertFulfillmentTransition("PLACED", "AWAITING_RUNNER");
     await db
       .from("orders")

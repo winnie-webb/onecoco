@@ -21,8 +21,12 @@ export const dynamic = "force-dynamic";
  * when a spot actually resolves as serviceable; every other branch still
  * says exactly where it stands rather than leading into a dead end.
  */
-export default async function Page() {
+export default async function Page({ searchParams }: { searchParams: Promise<{ qr?: string }> }) {
   const products = await getFullCatalogue();
+  // §2: "one table and one URL parameter" — /order?qr=<code>. Threaded
+  // through LocationGate -> CheckoutFlow -> POST /api/v1/orders, resolved
+  // server-side there; never trusted or looked up client-side.
+  const { qr } = await searchParams;
 
   return (
     <Section label="Ordering">
@@ -33,7 +37,7 @@ export default async function Page() {
         </h1>
       </div>
       <div className="mt-9">
-        <LocationGate products={products} />
+        <LocationGate products={products} qrCode={qr} />
       </div>
     </Section>
   );

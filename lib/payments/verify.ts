@@ -50,7 +50,7 @@ export async function captureAndApply(paymentId: string, providerRefFromClient?:
 
   const { data: order, error: orderError } = await db
     .from("orders")
-    .select("id, total_cents, currency, payment_status, fulfillment_status")
+    .select("id, total_cents, currency, payment_status, fulfillment_status, scheduled_for")
     .eq("id", payment.order_id)
     .single();
   if (orderError || !order) throw new CaptureError("order not found for this payment", "ORDER_NOT_FOUND");
@@ -118,7 +118,8 @@ export async function captureAndApply(paymentId: string, providerRefFromClient?:
   if (order.fulfillment_status === "PLACED") {
     assertFulfillmentTransition("PLACED", "AWAITING_RUNNER");
     await db.from("orders").update({ fulfillment_status: "AWAITING_RUNNER" }).eq("id", order.id).eq("fulfillment_status", "PLACED");
-    await createOffersForOrder(order.id);
+    const isDispatchableNow = !order.scheduled_for || new Date(order.scheduled_for).getTime() <= Date.now();
+    if (isDispatchableNow) await createOffersForOrder(order.id);
   }
 
   const { data: customer } = await db.from("orders").select("contact_email, order_number").eq("id", order.id).single();

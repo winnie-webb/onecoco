@@ -12,6 +12,7 @@ interface OrdersBody {
   deliveryNote?: unknown;
   location?: { lat?: unknown; lng?: unknown; accuracyM?: unknown };
   paymentProvider?: unknown;
+  qrCode?: unknown;
 }
 
 function isNonEmptyString(value: unknown): value is string {
@@ -72,6 +73,7 @@ export async function POST(request: Request) {
       deliveryNote: isNonEmptyString(body.deliveryNote) ? body.deliveryNote : undefined,
       location,
       paymentProvider: body.paymentProvider,
+      qrCode: isNonEmptyString(body.qrCode) ? body.qrCode : undefined,
     });
     return NextResponse.json(order, { status: 201 });
   } catch (err) {

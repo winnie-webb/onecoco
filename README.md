@@ -12,23 +12,25 @@ Montego Bay, Jamaica.
 | Path | What |
 |---|---|
 | `docs/ARCHITECTURE.md` | **Read this first.** Phase 0 — architecture, schema, flows, roadmap, risks, open questions. |
-| `PHASE-1-NOTES.md` … `PHASE-4-NOTES.md` | Phase close-outs: what shipped, what was fixed, known gaps. |
-| `app/(marketing)/` | Public site — landing, `/order` (location → cart → checkout), `/confirm`, `/track`. Own root layout (Header/Footer). |
-| `app/(admin)/admin/` | Staff tool — login (unguarded) + `(protected)/{orders,zones,products,runners}`. Own root layout, no site chrome. |
+| `PHASE-1-NOTES.md` … `PHASE-9-NOTES.md` | Phase close-outs: what shipped, what was fixed, known gaps. |
+| `app/(marketing)/` | Public site — landing, `/order` (location → cart → checkout, `?qr=` attribution), `/confirm`, `/track`. Own root layout (Header/Footer). |
+| `app/(admin)/admin/` | Staff tool — login (unguarded) + `(protected)/{orders,zones,products,runners,map,partners}`. Own root layout, no site chrome. |
 | `app/(runner)/runner/` | Runner PWA — login + `(protected)/{today,offers,order/[id]}`. Own root layout, mobile-first. |
-| `app/api/v1/*` | Route Handlers — customer-facing + `admin/*` / `runner/*` (staff-only, audited/guarded). |
-| `components/` | `ui/` primitives, `site/` chrome, `marketing/` sections, `order/` (checkout flow), `admin/`, `runner/` (staff UI). |
+| `app/(partner)/partner/` | Partner portal — login + `(protected)/{dashboard,qr-codes,group-orders}`. Own root layout, desktop-first (front-desk terminal, not a runner's phone). |
+| `app/api/v1/*` | Route Handlers — customer-facing + `admin/*` / `runner/*` / `partner/*` (staff/partner-only, audited/guarded). |
+| `components/` | `ui/` primitives, `site/` chrome, `marketing/` sections, `order/` (checkout flow), `admin/`, `runner/`, `partner/` (staff/partner UI). |
 | `lib/brand.ts` | The only file containing the brand name. |
-| `lib/db/` | `client.ts` (service-role, server-only), `server.ts`/`browser.ts` (staff/runner auth, RLS-scoped), generated `types.ts`. |
+| `lib/db/` | `client.ts` (service-role, server-only), `server.ts`/`browser.ts` (staff/runner/partner auth, RLS-scoped), generated `types.ts`. |
 | `lib/geo/`, `lib/pricing/`, `lib/settings.ts` | Zone resolution, serviceability gate, ETA, quote. |
 | `lib/orders/` | Order creation/cancellation/runner transitions, the central status-transition maps, tracking, display copy. |
-| `lib/dispatch/offers.ts` | Creates `order_offers` the moment an order becomes dispatchable (§6). |
+| `lib/dispatch/offers.ts` | Creates `order_offers` the moment an order becomes dispatchable (§6), gated on `scheduled_for` for group orders (§9). |
 | `lib/payments/` | `PaymentProvider` interface + `mock`/`cash`/`paypal` (unverified live, see `PHASE-5-NOTES.md`) providers, the four-check capture verifier. |
-| `lib/auth/` | Staff + runner role/session guards (Server Components and Route Handlers). |
+| `lib/growth/qr.ts` | QR code attribution resolution (§2/§9) — one table, one URL parameter, silently ignored if unresolvable. |
+| `lib/auth/` | Staff + runner + partner role/session guards (Server Components and Route Handlers). |
 | `lib/analytics/events.ts` | Funnel events — no-ops until `NEXT_PUBLIC_POSTHOG_KEY` is set. |
 | `lib/notifications/` | Email (Resend, unverified live) + console-sink fallback, templates. |
-| `proxy.ts` | Refreshes the staff/runner auth session cookie on `/admin/*` and `/runner/*` (this Next.js version's renamed `middleware.ts`). |
-| `supabase/migrations/` | Schema. 17 migrations, applied in filename order. |
+| `proxy.ts` | Refreshes the staff/runner/partner auth session cookie on `/admin/*`, `/runner/*`, `/partner/*` (this Next.js version's renamed `middleware.ts`). |
+| `supabase/migrations/` | Schema. 19 migrations, applied in filename order. |
 | `supabase/seed/jamaica.sql` | Montego Bay pilot configuration. Idempotent. |
 
 ## Running it
@@ -59,8 +61,9 @@ uses 3100. `npm run dev` on its own uses 3000 as normal.
 | 5 — Real payments, email | Code done, unverified live. PayPal + Resend written to spec with pure logic unit tested (`npm test`); this sandbox has neither account nor network egress to either host. `PHASE-5-NOTES.md`. |
 | 6 — Runner PWA | Done. Login, shift, Realtime offers, race-safe accept, pickup/arriving/delivered/undeliverable, cash settlement. Proven end to end; found and fixed a real cross-phase RLS bug along the way. `PHASE-6-NOTES.md`. |
 | 7 — Runner GPS + live map | Done, schematic map. GPS during active delivery only (§17), proximity on offers, admin live view. No map-tile host (Mapbox/OSM/unpkg) reachable from this sandbox — verified, not assumed — so positions render on a plain SVG radar instead of real tiles. Found and fixed two more cross-phase RLS/serialization bugs. `PHASE-7-NOTES.md`. |
-| 8 — Build Your Coco | **Done.** Real, live SVG preview wired into the actual `/order` picker (not a separate demo) plus an interactive marketing playground at `/build-your-coco`. `PHASE-8-NOTES.md`. |
-| 9+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
+| 8 — Build Your Coco | Done. Real, live SVG preview wired into the actual `/order` picker (not a separate demo) plus an interactive marketing playground at `/build-your-coco`. `PHASE-8-NOTES.md`. |
+| 9 — Partners, QR attribution, group orders | **Done.** Admin partner management + invite; partner portal (dashboard, printable QR codes, group/scheduled orders); QR-attributed checkout; commission calculation. Found and fixed a fourth cross-phase RLS gap (`partner_users`) and a scheduled-order dispatch-gating bug, both before/via live end-to-end testing. `PHASE-9-NOTES.md`. |
+| 10+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
 
 ### Local database
 
