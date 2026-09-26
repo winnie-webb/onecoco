@@ -34,7 +34,7 @@ export function RunnerShell({ session, children }: { session: { name: string }; 
           </nav>
           <div className="flex items-center gap-3 text-sm text-ink-soft">
             <span>{session.name}</span>
-            <button onClick={signOut} className="font-medium">
+            <button onClick={signOut} className="rounded-full px-3 py-2 font-medium hover:bg-sand-100">
               Sign out
             </button>
           </div>
