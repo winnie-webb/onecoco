@@ -1564,6 +1564,48 @@ export type Database = {
           },
         ];
       };
+      runner_locations: {
+        Row: {
+          accuracy_m: number | null;
+          assignment_id: string;
+          captured_at: string;
+          id: string;
+          point: unknown;
+          runner_id: string;
+        };
+        Insert: {
+          accuracy_m?: number | null;
+          assignment_id: string;
+          captured_at?: string;
+          id?: string;
+          point: unknown;
+          runner_id: string;
+        };
+        Update: {
+          accuracy_m?: number | null;
+          assignment_id?: string;
+          captured_at?: string;
+          id?: string;
+          point?: unknown;
+          runner_id?: string;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "runner_locations_assignment_id_fkey";
+            columns: ["assignment_id"];
+            isOneToOne: false;
+            referencedRelation: "order_assignments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "runner_locations_runner_id_fkey";
+            columns: ["runner_id"];
+            isOneToOne: false;
+            referencedRelation: "runners";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
       runners: {
         Row: {
           active: boolean;
@@ -1834,11 +1876,63 @@ export type Database = {
           },
         ];
       };
+      runner_locations_geo: {
+        Row: {
+          accuracy_m: number | null;
+          assignment_id: string | null;
+          captured_at: string | null;
+          id: string | null;
+          lat: number | null;
+          lng: number | null;
+          runner_id: string | null;
+        };
+        Insert: {
+          accuracy_m?: number | null;
+          assignment_id?: string | null;
+          captured_at?: string | null;
+          id?: string | null;
+          lat?: never;
+          lng?: never;
+          runner_id?: string | null;
+        };
+        Update: {
+          accuracy_m?: number | null;
+          assignment_id?: string | null;
+          captured_at?: string | null;
+          id?: string | null;
+          lat?: never;
+          lng?: never;
+          runner_id?: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "runner_locations_assignment_id_fkey";
+            columns: ["assignment_id"];
+            isOneToOne: false;
+            referencedRelation: "order_assignments";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "runner_locations_runner_id_fkey";
+            columns: ["runner_id"];
+            isOneToOne: false;
+            referencedRelation: "runners";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Functions: {
       accept_order_offer: {
         Args: { p_offer_id: string; p_runner_id: string };
         Returns: Database["public"]["Enums"]["accept_offer_result"];
+      };
+      beach_lnglat: {
+        Args: { p_beach_id: string };
+        Returns: {
+          lat: number;
+          lng: number;
+        }[];
       };
       current_app_role: {
         Args: Record<PropertyKey, never>;
@@ -1848,6 +1942,10 @@ export type Database = {
       is_staff: { Args: Record<PropertyKey, never>; Returns: boolean };
       nearest_prep_point_distance_m: {
         Args: { p_beach_id: string; p_lat: number; p_lng: number };
+        Returns: number;
+      };
+      runner_distance_to_point: {
+        Args: { p_lat: number; p_lng: number; p_max_age_s?: number; p_runner_id: string };
         Returns: number;
       };
       zones_covering_point: {

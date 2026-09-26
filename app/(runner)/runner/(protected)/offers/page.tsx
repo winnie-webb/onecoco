@@ -34,6 +34,7 @@ export default async function Page() {
       totalCents: order?.total_cents ?? 0,
       currency: order?.currency ?? "USD",
       landmarkText: order?.landmark_text ?? null,
+      distanceM: null, // server render has no location fix yet; the client re-fetches with one
     };
   });
 

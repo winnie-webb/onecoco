@@ -1,10 +1,12 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Button } from "@/components/ui/Button";
 import { FULFILLMENT_COPY } from "@/lib/orders/copy";
 import type { FulfillmentStatus } from "@/lib/orders/state";
+
+const LOCATION_PING_MS = 15_000;
 
 export interface OrderDetail {
   orderId: string;
@@ -26,6 +28,35 @@ export function ActiveDelivery({ order: initialOrder }: { order: OrderDetail }) 
   const [error, setError] = useState<string | null>(null);
   const [deliveryCode, setDeliveryCode] = useState("");
   const [showCodeEntry, setShowCodeEntry] = useState(false);
+
+  // §1.1/§17: GPS collected ONLY while OUT_FOR_DELIVERY, for THIS order —
+  // never in the background, never before pickup or after delivery.
+  useEffect(() => {
+    if (order.fulfillmentStatus !== "OUT_FOR_DELIVERY" || !("geolocation" in navigator)) return;
+
+    const ping = () => {
+      navigator.geolocation.getCurrentPosition(
+        (position) => {
+          fetch("/api/v1/runner/location", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              orderId: order.orderId,
+              lat: position.coords.latitude,
+              lng: position.coords.longitude,
+              accuracyM: position.coords.accuracy,
+            }),
+          }).catch(() => {});
+        },
+        () => {},
+        { enableHighAccuracy: true, timeout: 10_000 },
+      );
+    };
+
+    ping();
+    const interval = setInterval(ping, LOCATION_PING_MS);
+    return () => clearInterval(interval);
+  }, [order.fulfillmentStatus, order.orderId]);
 
   async function act(action: string, extra: Record<string, unknown> = {}) {
     setBusy(true);

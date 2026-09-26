@@ -106,6 +106,11 @@ export async function applyRunnerTransition(input: RunnerTransitionInput): Promi
       .update({ released_at: now, release_reason: "COMPLETED", delivered_occurred_at: input.occurredAt ?? now, delivered_recorded_at: now })
       .eq("id", assignmentId);
 
+    // §17's "short retention": the delivery is over, so the GPS trail
+    // collected for it is deleted immediately rather than lingering on a
+    // cleanup schedule that may not exist yet.
+    await db.from("runner_locations").delete().eq("assignment_id", assignmentId);
+
     if (order.payment_status === "CASH_DUE") {
       assertPaymentTransition("CASH_DUE", "CASH_COLLECTED");
       await db

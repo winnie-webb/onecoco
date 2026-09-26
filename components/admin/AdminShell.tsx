@@ -10,6 +10,7 @@ const NAV = [
   { href: "/admin/zones", label: "Zones" },
   { href: "/admin/products", label: "Products" },
   { href: "/admin/runners", label: "Runners" },
+  { href: "/admin/map", label: "Map" },
 ];
 
 export function AdminShell({ session, children }: { session: StaffSession; children: React.ReactNode }) {

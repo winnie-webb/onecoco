@@ -28,7 +28,7 @@ Montego Bay, Jamaica.
 | `lib/analytics/events.ts` | Funnel events — no-ops until `NEXT_PUBLIC_POSTHOG_KEY` is set. |
 | `lib/notifications/` | Email (Resend, unverified live) + console-sink fallback, templates. |
 | `proxy.ts` | Refreshes the staff/runner auth session cookie on `/admin/*` and `/runner/*` (this Next.js version's renamed `middleware.ts`). |
-| `supabase/migrations/` | Schema. 14 migrations, applied in filename order. |
+| `supabase/migrations/` | Schema. 17 migrations, applied in filename order. |
 | `supabase/seed/jamaica.sql` | Montego Bay pilot configuration. Idempotent. |
 
 ## Running it
@@ -57,8 +57,9 @@ uses 3100. `npm run dev` on its own uses 3000 as normal.
 | 3 — Cart, checkout, tracking | Done. Real quote/order/mock-payment/tracking flow, proven end to end in a real browser. `PHASE-3-NOTES.md`. |
 | 4 — Admin | Done. Staff auth, live order board (Realtime) + at-risk view, zone pause, products, runners. `PHASE-4-NOTES.md`. |
 | 5 — Real payments, email | Code done, unverified live. PayPal + Resend written to spec with pure logic unit tested (`npm test`); this sandbox has neither account nor network egress to either host. `PHASE-5-NOTES.md`. |
-| 6 — Runner PWA | **Done.** Login, shift, Realtime offers, race-safe accept, pickup/arriving/delivered/undeliverable, cash settlement. Proven end to end; found and fixed a real cross-phase RLS bug along the way. `PHASE-6-NOTES.md`. |
-| 7+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
+| 6 — Runner PWA | Done. Login, shift, Realtime offers, race-safe accept, pickup/arriving/delivered/undeliverable, cash settlement. Proven end to end; found and fixed a real cross-phase RLS bug along the way. `PHASE-6-NOTES.md`. |
+| 7 — Runner GPS + live map | **Done, schematic map.** GPS during active delivery only (§17), proximity on offers, admin live view. No map-tile host (Mapbox/OSM/unpkg) reachable from this sandbox — verified, not assumed — so positions render on a plain SVG radar instead of real tiles. Found and fixed two more cross-phase RLS/serialization bugs. `PHASE-7-NOTES.md`. |
+| 8+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
 
 ### Local database
 
