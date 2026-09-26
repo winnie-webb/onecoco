@@ -1,24 +1,9 @@
 import type { Metadata, Viewport } from "next";
-import { Outfit } from "next/font/google";
 import { brand, siteUrl } from "@/lib/brand";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
+import { display } from "@/lib/fonts";
 import "./globals.css";
-
-/*
- * One family, two roles: --font-display and --font-sans both resolve here.
- * A second face cost ~40KB on first paint for a page whose body copy is a few
- * short paragraphs — not a good trade when the audience is on beach signal.
- *
- * Outfit is a variable font, so no `weight` array: that would pin static
- * instances and lose the weights in between. Measured cost of this setup is
- * 31.8KB in one file.
- */
-const display = Outfit({
-  subsets: ["latin"],
-  variable: "--font-display",
-  display: "swap",
-});
 
 export const metadata: Metadata = {
   metadataBase: new URL(siteUrl),

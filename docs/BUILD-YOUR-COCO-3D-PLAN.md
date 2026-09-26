@@ -1,6 +1,6 @@
 # Build Your Coco: 3D Customiser Plan
 
-Status: **proposal, nothing built yet.** Decisions from the owner (2026-09-26) are in §8: printed stickers, garnish stocked at prep points, extras priced separately. This covers Phase 8 of `docs/ARCHITECTURE.md` §25 ("Build Your Coco: full personalisation + preview") and makes the preview a live, interactive 3D coconut.
+Status: **M1–M3 built, M4 partly** (see §10). Decisions from the owner (2026-09-26) are in §8: printed stickers, garnish stocked at prep points, extras priced separately. This covers Phase 8 of `docs/ARCHITECTURE.md` §25 ("Build Your Coco: full personalisation + preview") and makes the preview a live, interactive 3D coconut.
 
 The main constraint is **speed**. The customer is a tourist on a beach, on a mid-range phone with weak signal. If the 3D view is slow to load, janky while you type, or drains the battery, it hurts sales more than having no 3D at all. Every decision below follows from that.
 
@@ -31,7 +31,7 @@ The groups match the existing schema (`supabase/seed/jamaica.sql`), with a few n
 | **Occasion** | select | Sets default design and message placeholder ("Just Married", date) | `occasion` (exists) |
 | **Font** | 3 choices (Bold, Script, Classic) | Text style | **new** `font` SELECT |
 | **Straw** | 4 colours | Straw mesh colour | **new** `straw` SELECT |
-| **Sticker shape** | Round / Oval | Outline of the sticker | **new** `sticker_shape` SELECT |
+| **Sticker shape** | Round / Oval | Outline of the sticker | **new** `shape` SELECT |
 | **Garnish** | Hibiscus, lime wedge, umbrella | Small 3D props on the crown | extends `extras` |
 
 Interaction:
@@ -101,7 +101,7 @@ Fonts: reuse the display font the page has already loaded (0 extra bytes). The t
 1. **Server-rendered static preview** (SVG coconut + HTML text overlay, reusing `CocoMark`-style art) paints with the page. Typing into the form updates it straight away.
 2. After first paint, `requestIdleCallback` (or the first tap on the preview) triggers a `dynamic import()` of the 3D chunk.
 3. The 3D canvas renders its first frame **underneath**, then cross-fades in over the static preview. If loading takes 5 s on bad signal, the customer never notices, because the static preview was already working.
-4. **Stay on the 2D preview** when there's no WebGL, `prefers-reduced-motion`, `navigator.connection.saveData`, or a WebGL context loss. It uses the same `drawSticker`, so it's still an accurate preview.
+4. **Stay on the 2D preview** when there's no WebGL, `navigator.connection.saveData`, or a WebGL context loss. With `prefers-reduced-motion` the 3D view still loads (it never moves on its own) but spin inertia and the snap-back animation are off. It uses the same `drawSticker`, so it's still an accurate preview.
 
 ### 4.6 State lives in the form, not in the 3D
 
@@ -153,7 +153,7 @@ M1 already has value on its own (a working, accurate builder), and M2 builds on 
 
 A typical "photo" order: Classic $7 + sticker $2 + hibiscus $2 + umbrella $1 = **US$12** before delivery. Every extra costs cents in materials, which helps with the ~7% card fees on a small order (ARCHITECTURE §26.3).
 
-Seed change: `name` group stays at 200 ¢. Add `umbrella` (100 ¢) and `hibiscus` (200 ¢) options to `extras` and raise its `max_select` to match the new option count. Add the `font`, `straw` and `sticker_shape` SELECT groups at 0 ¢.
+Seed change: `name` group stays at 200 ¢. Add `umbrella` (100 ¢) and `hibiscus` (200 ¢) options to `extras` and raise its `max_select` to match the new option count. Add the `font`, `shape`, `straw` and `symbol` SELECT groups at 0 ¢.
 
 ## 9. Risks
 
@@ -166,3 +166,39 @@ Seed change: `name` group stays at 200 ¢. Add `umbrella` (100 ¢) and `hibiscus
 | Low-end phones overheat or stutter | Render-on-demand, DPR cap, 2D fallback tier, field RUM |
 | Offensive names on a branded product | Server blocklist + ops reject path |
 | Bundle creep over time | CI size check on the 3D chunk (M5) |
+
+## 10. Build status (2026-09-26)
+
+**Built** on `/build-your-coco`:
+
+| Piece | Where |
+|---|---|
+| `CocoSpec`, prices, URL encoding, text cleaning, blocklist, `validateSpec` | `lib/coco/spec.ts` |
+| Coconut profile and garnish placement shared by both previews | `lib/coco/shape.ts` |
+| `drawSticker` (preview, 3D texture, share image) and `renderPrintFile` (300 DPI) | `lib/coco/sticker.ts` |
+| Builder form, URL sync, lazy 3D, share | `components/order/CocoBuilder.tsx` |
+| 2D preview (SVG coconut + real sticker canvas) | `components/order/Coco2D.tsx` |
+| 3D scene (OGL, render on demand) | `components/order/coco3d/scene.ts` |
+| Script/Classic sticker fonts, `preload: false` | `components/order/stickerFonts.ts` |
+| New seed groups and options with §8 prices | `supabase/seed/jamaica.sql` |
+
+**Measured** on the production build:
+
+| Metric | Budget | Measured |
+|---|---|---|
+| 3D chunk (gzip) | ≤ 30 KB | **19.2 KB** (OGL + scene + shaders) |
+| 3D asset downloads | 0–1 | **0** |
+| 3D chunk in initial HTML | none | **none**: loaded on idle after first paint |
+| Builder JS added to the page | as small as possible | **~9 KB gzip** (form + 2D preview + sticker drawing) |
+| Extra fonts on first load | 0 | **0**: Script/Classic fetched only when picked |
+| Page rendering | static | **still prerendered static** |
+
+Frame rate and keystroke-to-frame still need measuring on a real low-end Android phone (§3). That can't be done in CI.
+
+**Not built yet:**
+- **"Add to order"** links to `/order?…` with the design in the URL. The cart that reads it is Phase 3.
+- **The "Print sticker" button** for the prep point needs the Phase 4 admin. `renderPrintFile(spec, fonts)` is ready for it.
+- **Garnish stock:** hiding out-of-stock garnish needs a schema change, because `inventory` is keyed by product SKU and garnish are customisation options.
+- **Coco for Two stickers** (a second name, +US$2) need a `name_2` group scoped to the TWO product.
+- **Server-side validation** runs when the order API exists; it must call `normalizeSpec` + `validateSpec`.
+- **M0 physical sticker test** and the choice of printer.

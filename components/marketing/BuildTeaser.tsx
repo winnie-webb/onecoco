@@ -16,8 +16,8 @@ export function BuildTeaser() {
               Put your name on it.
             </h2>
             <p className="mt-4 max-w-md text-pretty text-lg leading-relaxed text-sand-300">
-              A name, a message, a design. It costs a couple of dollars more and
-              it&rsquo;s the one that ends up on the grid.
+              A name, a message and a design on a colour sticker. It costs a couple
+              of dollars more and it&rsquo;s the one that ends up on the grid.
             </p>
 
             <ul className="mt-7 flex flex-wrap gap-2">
@@ -32,7 +32,7 @@ export function BuildTeaser() {
             </ul>
 
             <Button href="/build-your-coco" variant="accent" size="lg" className="mt-9">
-              See how it works
+              Build yours
             </Button>
           </div>
 
@@ -59,7 +59,7 @@ export function BuildTeaser() {
                 <dd className="text-sand-100">US$7</dd>
               </div>
               <div className="flex justify-between">
-                <dt className="text-sand-300">Name &amp; message</dt>
+                <dt className="text-sand-300">Custom sticker</dt>
                 <dd className="text-sand-100">US$2</dd>
               </div>
               <div className="flex justify-between border-t border-jungle-700 pt-2.5 font-display text-base font-bold">
