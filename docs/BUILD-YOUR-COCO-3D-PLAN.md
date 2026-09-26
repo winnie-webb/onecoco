@@ -1,6 +1,6 @@
 # Build Your Coco: 3D Customiser Plan
 
-Status: **proposal, nothing built yet.** This covers Phase 8 of `docs/ARCHITECTURE.md` §25 ("Build Your Coco: full personalisation + preview") and makes the preview a live, interactive 3D coconut.
+Status: **proposal, nothing built yet.** Decisions from the owner (2026-09-26) are in §8: printed stickers, garnish stocked at prep points, extras priced separately. This covers Phase 8 of `docs/ARCHITECTURE.md` §25 ("Build Your Coco: full personalisation + preview") and makes the preview a live, interactive 3D coconut.
 
 The main constraint is **speed**. The customer is a tourist on a beach, on a mid-range phone with weak signal. If the 3D view is slow to load, janky while you type, or drains the battery, it hurts sales more than having no 3D at all. Every decision below follows from that.
 
@@ -17,19 +17,21 @@ Custom coconuts are already sold at weddings, resorts and brand events ([Coconut
 
 Our builder should let the customer make exactly that, and see it before they buy.
 
+**We're going with printed colour stickers**, not engraving or carving. A sticker printer at the prep point is cheap, fast and needs no special skill, it can print in full colour, and it can print from the same file the customer saw in the preview.
+
 ## 2. What the customer can do
 
 The groups match the existing schema (`supabase/seed/jamaica.sql`), with a few new rows added.
 
 | Control | Input | Shows on the 3D coconut as | Schema |
 |---|---|---|---|
-| **Name** | text, ≤ 20 | Big engraved text across the front of the husk | `name` (exists, +US$2) |
-| **Message** | text, ≤ 40 | Smaller line under the name ("Jamaica 2026") | `message` (exists) |
-| **Design** | Jamaican / Tropical / Romance / Birthday | A motif around the text: flag stripes band, palm leaves, hearts, confetti | `design` (exists) |
+| **Name** | text, ≤ 20 | Big text on a colour sticker on the front of the husk | `name` (exists) |
+| **Message** | text, ≤ 40 | Smaller line under the name ("Jamaica 2026"), on the same sticker | `message` (exists) |
+| **Design** | Jamaican / Tropical / Romance / Birthday | Sticker artwork and colours: flag stripes, palm leaves, hearts, confetti | `design` (exists) |
 | **Occasion** | select | Sets default design and message placeholder ("Just Married", date) | `occasion` (exists) |
 | **Font** | 3 choices (Bold, Script, Classic) | Text style | **new** `font` SELECT |
-| **Finish** | Engraved / Printed | Brown burn vs full-colour print | **new** `finish` SELECT, *only if ops can produce both* (§8) |
 | **Straw** | 4 colours | Straw mesh colour | **new** `straw` SELECT |
+| **Sticker shape** | Round / Oval | Outline of the sticker | **new** `sticker_shape` SELECT |
 | **Garnish** | Hibiscus, lime wedge, umbrella | Small 3D props on the crown | extends `extras` |
 
 Interaction:
@@ -38,7 +40,7 @@ Interaction:
 - **"Share my coco"** saves a PNG of the current view for WhatsApp/Instagram. The existing copy says "it's the one that ends up on the grid", so this is the feature that drives word of mouth.
 - **"Add to order"** puts a cart line with the chosen customisations into the Phase 3 cart.
 
-Emoji: the example "Jamaica 2026 ❤️" can't be laser-engraved. Hearts, stars and palms become **built-in glyphs** chosen from a picker, and free-text emoji are removed from the input. That keeps the preview honest.
+Emoji: a colour sticker *can* print "Jamaica 2026 ❤️", but every phone draws emoji differently, and a full colour-emoji font is several MB. So hearts, stars, palms, suns and similar become **our own small SVG glyphs** chosen from a picker, drawn the same everywhere. Typed emoji are removed from the input. What the customer sees is exactly what prints.
 
 ## 3. Speed budget (the acceptance criteria)
 
@@ -71,22 +73,21 @@ For scale: a React Three Fiber + drei + three.js setup is typically **200–300 
 - Lighting is a **baked, hand-tuned shader**: one key light, a warm sky/sand hemisphere term and a soft rim. No PBR environment maps and no shadows. A fake contact shadow is a blurred ellipse drawn as a quad.
 - Straw, lime wedge, hibiscus and umbrella are **tiny procedural meshes** (a tube, a wedge, 5 petals, a cone). They're built only when selected.
 
-### 4.3 Text and designs: one 2D canvas, reused everywhere
+### 4.3 The sticker: one 2D canvas, reused everywhere
 
 This is the most important design choice.
 
-- One function, `drawPrintLayer(ctx, spec)`, draws the name, message, font and motif onto a **2D canvas (1024×512)**. That canvas is the "print area" wrapped around the front of the husk.
-- The canvas is uploaded as a texture and mapped with **cylindrical UVs** onto the husk's front band.
-- **Engraved look**: the shader darkens the husk to a burn brown where the text alpha is set, and bends the lighting normal using the alpha's gradient (4 neighbouring samples), so the letters look cut into the surface. **Printed look**: the colour is composited directly. Both are the same shader with a uniform switch.
-- On each keystroke we redraw the canvas and re-upload the texture, with **at most one upload per animation frame**. At 1024×512 that costs well under a millisecond.
-- **The same `drawPrintLayer` also produces:**
+- One function, `drawSticker(ctx, spec)`, draws the sticker (shape, background colours, design artwork, name, message, glyphs) onto a **2D canvas at the real sticker's aspect ratio** (e.g. 2 × 2.5 in, drawn at 512 px for the preview).
+- In 3D the sticker is a **decal**: the canvas is uploaded as a texture and projected straight onto the front of the husk (a flat projection, since a small sticker lies almost flat on the coconut). The shader adds a thin white border and a faint gloss highlight so it reads as a vinyl sticker. No engraving or bump-mapping maths is needed, which keeps the shader small.
+- On each keystroke we redraw the canvas and re-upload the texture, with **at most one upload per animation frame**. At 512 px that costs well under a millisecond.
+- **The same `drawSticker` also produces:**
   1. the no-WebGL 2D fallback preview,
   2. the share PNG,
-  3. the **production file for the prep point** (SVG/PNG to feed the laser engraver or label printer).
+  3. the **print file for the prep point**: the same drawing at **300 DPI at the exact sticker size**, ready for the label printer.
 
-  So what the customer sees is exactly what gets made. There's no second rendering path to drift out of sync.
+  So what the customer sees is exactly what gets printed. There's no second rendering path to drift out of sync.
 
-Fonts: reuse the display font the page has already loaded (0 extra bytes). The two extra font choices are **subset to Latin** (~15 KB each), load only when picked, and redraw on `document.fonts.load()`.
+Fonts: reuse the display font the page has already loaded (0 extra bytes). The two extra font choices are **subset to Latin** (~15 KB each), load only when picked, and redraw on `document.fonts.load()`. Print files embed nothing: they're flat images.
 
 ### 4.4 Render only when something changes
 
@@ -100,7 +101,7 @@ Fonts: reuse the display font the page has already loaded (0 extra bytes). The t
 1. **Server-rendered static preview** (SVG coconut + HTML text overlay, reusing `CocoMark`-style art) paints with the page. Typing into the form updates it straight away.
 2. After first paint, `requestIdleCallback` (or the first tap on the preview) triggers a `dynamic import()` of the 3D chunk.
 3. The 3D canvas renders its first frame **underneath**, then cross-fades in over the static preview. If loading takes 5 s on bad signal, the customer never notices, because the static preview was already working.
-4. **Stay on the 2D preview** when there's no WebGL, `prefers-reduced-motion`, `navigator.connection.saveData`, or a WebGL context loss. It uses the same `drawPrintLayer`, so it's still an accurate preview.
+4. **Stay on the 2D preview** when there's no WebGL, `prefers-reduced-motion`, `navigator.connection.saveData`, or a WebGL context loss. It uses the same `drawSticker`, so it's still an accurate preview.
 
 ### 4.6 State lives in the form, not in the 3D
 
@@ -109,40 +110,59 @@ Fonts: reuse the display font the page has already loaded (0 extra bytes). The t
 
 ## 5. Data & ordering integration
 
-- **No migration needed.** All the new controls are `customization_groups` / `customization_options` **seed rows**. Pricing stays server-side through the existing quote flow (`quotes` table, ARCHITECTURE §9). The client price shown is only a display value.
+- **No migration needed.** All the new controls and prices in §8 are `customization_groups` / `customization_options` **seed rows** in `supabase/seed/jamaica.sql`. Pricing stays server-side through the existing quote flow (`quotes` table, ARCHITECTURE §9). The client price shown is only a display value.
 - A `CocoSpec` maps 1:1 to `order_item_customizations` rows (`text_value` for name/message, `option_id` for the rest). `label_snapshot` keeps old orders readable.
-- **Server-side validation** (never trust the client): lengths, allowed character set per finish, a profanity/slur blocklist on name and message, and ops can reject an order that slips through.
-- **Prep point / runner view** (Phase 4/6 surfaces) shows the spec and a **"Download engraving file"** action that runs the same `drawPrintLayer` to produce the production file.
+- **Server-side validation** (never trust the client): lengths, allowed character set (letters, numbers, basic punctuation, our glyph codes), message requires a name (§8), a profanity/slur blocklist on name and message, and ops can reject an order that slips through.
+- **Prep point view** (Phase 4/6 surfaces) shows the order's sticker and a **"Print sticker"** button. It renders `drawSticker` at 300 DPI and opens the normal print dialog, sized to the label roll. That's no driver integration for v1. Automatic printing when an order arrives can come later.
+- Garnish is checked against prep point `inventory` like any other stock, so a customer is never offered a hibiscus the prep point has run out of.
 
 ## 6. Analytics (PostHog, already planned)
 
-`builder_viewed`, `builder_3d_ready` (with load ms and device tier), `builder_field_changed`, `builder_shared`, `builder_added_to_order`. The key comparison is **attach rate of the US$2 personalisation, 3D vs 2D fallback**. That shows whether the 3D is worth keeping. We also log real-user time to 3D-ready so the speed budget is checked in the field, not just in the lab.
+`builder_viewed`, `builder_3d_ready` (with load ms and device tier), `builder_field_changed`, `builder_shared`, `builder_added_to_order`. The key comparisons are **attach rate of the sticker and of each garnish, 3D vs 2D fallback**, and average order value. That shows whether the 3D is worth keeping. We also log real-user time to 3D-ready so the speed budget is checked in the field, not just in the lab.
 
 ## 7. Milestones
 
 | # | Deliverable | Exit criteria |
 |---|---|---|
-| **M0: Spike (1–2 days)** | Lathe coconut + engraved name in OGL on a bare page | **Go/no-go on §3 budgets on a real low-end Android.** If OGL misses the byte budget, switch to raw WebGL2 before building anything more. |
-| **M1: Builder + 2D preview** | Form, `CocoSpec` reducer, URL sync, `drawPrintLayer`, 2D preview on `/build-your-coco` | Works fully with JS 3D disabled; 390 px first |
-| **M2: 3D view** | Lazy chunk, cross-fade, drag-to-spin, engraved/printed shader, render-on-demand | All §3 numbers met and recorded |
-| **M3: Designs + garnish** | 4 motifs, 3 fonts, straw colours, hibiscus/lime/umbrella | Each addition re-measured; chunk still ≤ 30 KB |
-| **M4: Share + order** | PNG share, "Add to order" → cart line, server validation, prep-point production file | End-to-end: build → order → prep sees the correct file |
+| **M0: Spike (1–2 days)** | Lathe coconut + name sticker in OGL on a bare page. **In parallel, a physical test:** print sample stickers, put them on chilled, wet coconuts and leave them in the sun for an hour | **Go/no-go on §3 budgets on a real low-end Android.** If OGL misses the byte budget, switch to raw WebGL2 before building anything more. Sticker stock and printer chosen from the physical test (§8). |
+| **M1: Builder + 2D preview** | Seed rows + prices (§8), form, `CocoSpec` reducer, URL sync, `drawSticker`, 2D preview on `/build-your-coco` | Works fully with JS 3D disabled; 390 px first |
+| **M2: 3D view** | Lazy chunk, cross-fade, drag-to-spin, sticker decal shader, render-on-demand | All §3 numbers met and recorded |
+| **M3: Designs + garnish** | 4 designs, 3 fonts, 2 sticker shapes, glyph picker, straw colours, hibiscus/lime/umbrella | Each addition re-measured; chunk still ≤ 30 KB |
+| **M4: Share + order** | PNG share, "Add to order" → cart line, server validation, prep-point "Print sticker" | End-to-end: build → order → prep prints a sticker that matches the preview |
 | **M5: Hardening** | Context-loss recovery, low-tier device path, a11y (labelled controls, text alternative describing the coconut, keyboard spin with arrow keys), RUM dashboard | Playwright perf test in CI fails the build if the chunk exceeds budget |
 
 M1 already has value on its own (a working, accurate builder), and M2 builds on it. If 3D is ever cut, nothing else has to be redone.
 
-## 8. Decisions needed from you
+## 8. Decisions (2026-09-26)
 
-1. **What can we physically produce at launch?** (ARCHITECTURE §27.8, still open.) Laser-engraved means a small desktop laser at the prep point: fast, and it looks premium. Printed means a sticker/label printer: cheaper, full colour. The preview must only offer what the runner can actually hand over, so the answer decides whether "Finish" is a choice or a fixed value.
-2. **Garnish availability.** Hibiscus and umbrellas need stock at each prep point. Offer them only where inventory says yes (the same rule as the existing "only what we can put in your hand" copy).
-3. **Price of extras** (font, garnish), or keep everything in the single US$2 personalisation fee. Simpler is probably better on a beach.
+1. **Production: printed colour stickers.** Engraving and carving are dropped. The prep point needs a **colour label printer with waterproof/vinyl label stock**. Coconuts come out of the cooler wet with condensation, so the M0 physical test (stick labels on chilled, wet coconuts and leave them in the sun) picks the printer and label stock before we buy in quantity. The prep team wipes the coconut dry, then applies the sticker.
+2. **Garnish: prep points will stock it.** Hibiscus, lime and umbrellas are tracked in `inventory` per prep point, and the builder hides anything that's out of stock.
+3. **Pricing: extras charged separately.** Starting prices below, to be reviewed after the first few weeks of data:
+
+| Item | Price | Notes |
+|---|---|---|
+| Classic Coco | US$7 | Unchanged |
+| **Custom sticker** (name + optional message, design, font, shape, glyphs) | **+US$2** | Unchanged: keeps the "from US$9" marketing line true. A message needs a name, so the sticker is always paid for. |
+| Coloured straw | Free | Pennies per straw; a free choice that gets people started |
+| Lime wedge | +US$1 | Already seeded |
+| Paper umbrella | +US$1 | New |
+| Hibiscus flower | +US$2 | New; it's the most photogenic add-on |
+| Extra coconut water | +US$2 | Already seeded |
+| Extra straw, spoon | Free | Already seeded |
+| **Coco for Two** stickers | +US$2 per coconut | Each coconut can have its own name |
+
+A typical "photo" order: Classic $7 + sticker $2 + hibiscus $2 + umbrella $1 = **US$12** before delivery. Every extra costs cents in materials, which helps with the ~7% card fees on a small order (ARCHITECTURE §26.3).
+
+Seed change: `name` group stays at 200 ¢. Add `umbrella` (100 ¢) and `hibiscus` (200 ¢) options to `extras` and raise its `max_select` to match the new option count. Add the `font`, `straw` and `sticker_shape` SELECT groups at 0 ¢.
 
 ## 9. Risks
 
 | Risk | Mitigation |
 |---|---|
 | Procedural husk looks "CG" and cheap | M0 art pass; fallback to one ≤ 40 KB WebP detail texture |
-| Preview promises something the prep point can't make | Single `drawPrintLayer` source for preview and production; finish options tied to decision §8.1 |
+| Preview promises something the prep point can't make | Single `drawSticker` source for preview and print file; colours checked against real printed samples in M0 |
+| Stickers peel off wet, cold coconuts | M0 sun-and-condensation test decides the label stock; wipe-dry step in the prep checklist |
+| Printer jams or runs out of labels on a busy day | Keep a spare roll at each prep point; if the printer is down, ops pauses sticker orders at that prep point (hide them in the builder, the same way as out-of-stock garnish) |
 | Low-end phones overheat or stutter | Render-on-demand, DPR cap, 2D fallback tier, field RUM |
 | Offensive names on a branded product | Server blocklist + ops reject path |
 | Bundle creep over time | CI size check on the 3D chunk (M5) |

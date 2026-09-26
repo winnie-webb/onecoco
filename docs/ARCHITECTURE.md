@@ -678,7 +678,7 @@ Two need answers before the phase that depends on them; none block Phase 1.
 5. **Tips to staff runners** — a payroll/tax question, not just a UI toggle. Nothing in the schema until it's answered.
 6. **Brand name — deliberately still open.** "One Coco" is the working name; the final name is not locked, so **Phase 1 is built name-agnostic** (see §28). This is a decision, not a loose end: it costs a small amount of structure now and removes the risk of redoing the brand work later.
 7. **Domain.** `onecoco.com` is **taken** — registered 2006, held at NameBright/TurnCommerce (a domain-investor registrar), expiry 2027-01-02; almost certainly for sale at investor pricing. Checked as unregistered right now: `getonecoco.com`, `onecocojamaica.com`. Also checked and **all taken**, three of them parked at investor registrars: `cocodrop.com`, `beachcoco.com`, `jellycoco.com`, `cocorunner.com` — the short coconut `.com` space is picked over generally, so any replacement name will face the same problem. Worth knowing before a naming pass is commissioned.
-8. **Is Build Your Coco physically produced at launch**, or a Phase 8 promise?
+8. **Is Build Your Coco physically produced at launch**, or a Phase 8 promise? *Answered 2026-09-26: produced as printed colour stickers, extras priced separately. See `docs/BUILD-YOUR-COCO-3D-PLAN.md` §8.*
 
 Explicitly **out of MVP scope**, noted so the capacity maths already assumes it's coming: **order batching** (one runner carrying three coconuts) is not expressible in this model.
 
