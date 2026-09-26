@@ -145,7 +145,43 @@ export function PartnersTable({ partners: initialPartners, beaches }: { partners
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-card border-2 border-sand-200">
+      {/* Below md: a card per partner — six columns plus two action buttons
+          don't fit a phone width, and the row actions are the whole point
+          of this page (invite a user, print a QR code), so they need real
+          tap targets, not a cramped inline pair. */}
+      <div className="space-y-3 md:hidden">
+        {partners.length === 0 && (
+          <p className="rounded-card border-2 border-sand-200 px-4 py-8 text-center text-ink-soft">No partners yet.</p>
+        )}
+        {partners.map((p) => (
+          <div key={p.id} className="rounded-card border-2 border-sand-200 p-4">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">{p.name}</span>
+              <span className="rounded-full bg-sand-100 px-2 py-0.5 text-xs font-bold text-ink-soft">{p.status}</span>
+            </div>
+            <p className="mt-1 text-sm text-ink-soft">
+              {p.type} · {p.beachName ?? "—"}
+            </p>
+            <p className="mt-1 text-sm">{(p.commissionRateBps / 100).toFixed(2)}% commission</p>
+            <div className="mt-3 flex flex-col gap-2">
+              <button
+                onClick={() => invite(p.id)}
+                className="min-h-11 rounded-full border border-jungle-800 text-sm font-semibold text-jungle-800"
+              >
+                Invite user
+              </button>
+              <button
+                onClick={() => createQr(p.id)}
+                className="min-h-11 rounded-full border border-jungle-800 text-sm font-semibold text-jungle-800"
+              >
+                New QR code
+              </button>
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-card border-2 border-sand-200 md:block">
         <table className="w-full text-left text-sm">
           <thead className="bg-sand-100 text-xs font-bold uppercase tracking-wide text-ink-soft">
             <tr>

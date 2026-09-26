@@ -128,7 +128,40 @@ export function OrdersBoard({ initialOrders, initialAtRisk }: { initialOrders: A
         </div>
       )}
 
-      <div className="mt-6 overflow-x-auto rounded-card border-2 border-sand-200">
+      {/* Below md: one card per order — seven columns of a live board don't
+          fit a phone screen without sideways scrolling through the exact
+          data an ops person is trying to act on quickly. */}
+      <div className="mt-6 space-y-3 md:hidden">
+        {orders.length === 0 && (
+          <p className="rounded-card border-2 border-sand-200 px-4 py-8 text-center text-ink-soft">No active orders.</p>
+        )}
+        {orders.map((o) => (
+          <div
+            key={o.id}
+            className={`rounded-card border-2 p-4 ${atRiskById.has(o.id) ? "border-red-300 bg-red-50" : "border-sand-200"}`}
+          >
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">#{o.orderNumber}</span>
+              <span className="font-semibold">{money(o.totalCents, o.currency)}</span>
+            </div>
+            <p className="mt-1 text-sm">
+              {FULFILLMENT_COPY[o.fulfillmentStatus]} · {o.paymentStatus}
+            </p>
+            <p className="mt-1 text-sm text-ink-soft">
+              {o.contactName ?? "—"} · {o.zoneName ?? "—"}
+            </p>
+            <button
+              onClick={() => cancelOrder(o.id)}
+              disabled={cancelling === o.id}
+              className="mt-3 min-h-11 w-full rounded-full border border-red-300 text-sm font-semibold text-red-700 hover:bg-red-100"
+            >
+              Cancel
+            </button>
+          </div>
+        ))}
+      </div>
+
+      <div className="mt-6 hidden overflow-x-auto rounded-card border-2 border-sand-200 md:block">
         <table className="w-full text-left text-sm">
           <thead className="bg-sand-100 text-xs font-bold uppercase tracking-wide text-ink-soft">
             <tr>

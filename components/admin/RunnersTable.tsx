@@ -98,7 +98,30 @@ export function RunnersTable({ runners: initialRunners, beaches }: { runners: Ru
         </div>
       )}
 
-      <div className="overflow-x-auto rounded-card border-2 border-sand-200">
+      {/* Below md: a card per runner — five columns including a full shift
+          status enum value don't fit a phone width without truncating the
+          exact value ops needs to read. */}
+      <div className="space-y-3 md:hidden">
+        {runners.length === 0 && (
+          <p className="rounded-card border-2 border-sand-200 px-4 py-8 text-center text-ink-soft">No runners yet.</p>
+        )}
+        {runners.map((r) => (
+          <div key={r.id} className="rounded-card border-2 border-sand-200 p-4">
+            <div className="flex items-center justify-between">
+              <span className="font-semibold">{r.name}</span>
+              <span className={`rounded-full px-2 py-0.5 text-xs font-bold ${r.active ? "bg-lime-500/20 text-jungle-900" : "bg-sand-200 text-ink-soft"}`}>
+                {r.active ? "ACTIVE" : "INACTIVE"}
+              </span>
+            </div>
+            <p className="mt-1 text-sm text-ink-soft">{r.phone ?? "—"}</p>
+            <p className="mt-1 text-sm">
+              {r.homeBeachName ?? "—"} · {r.shiftStatus}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      <div className="hidden overflow-x-auto rounded-card border-2 border-sand-200 md:block">
         <table className="w-full text-left text-sm">
           <thead className="bg-sand-100 text-xs font-bold uppercase tracking-wide text-ink-soft">
             <tr>
