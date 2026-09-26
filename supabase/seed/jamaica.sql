@@ -83,13 +83,21 @@ ON CONFLICT (sku) DO NOTHING;
 
 -- Build Your Coco is NOT a separate product: it is Classic plus personalisation.
 -- Classic 700 + name 200 = 900, which is the "from US$9" on the marketing page.
+-- The name's 200 is the custom sticker; a message needs a name (enforced in the
+-- order API via lib/coco/spec.ts validateSpec), so every sticker is paid for.
+-- Prices: docs/BUILD-YOUR-COCO-3D-PLAN.md §8. Keys mirror lib/coco/spec.ts.
 INSERT INTO customization_groups (key, label, input_type, required, max_length, min_select, max_select, price_delta_cents, sort_order) VALUES
   ('name',     'Name',     'TEXT',        false, 20, 0, 1, 200, 10),
+  ('name_2',   'Second name', 'TEXT',     false, 20, 0, 1, 200, 15),
   ('message',  'Message',  'TEXT',        false, 40, 0, 1,   0, 20),
   ('design',   'Design',   'SELECT',      false, NULL, 0, 1,  0, 30),
   ('occasion', 'Occasion', 'SELECT',      false, NULL, 0, 1,  0, 40),
-  ('extras',   'Extras',   'MULTISELECT', false, NULL, 0, 4,  0, 50)
-ON CONFLICT (key) DO NOTHING;
+  ('extras',   'Extras',   'MULTISELECT', false, NULL, 0, 6,  0, 50),
+  ('font',     'Font',     'SELECT',      false, NULL, 0, 1,  0, 60),
+  ('shape',    'Sticker shape', 'SELECT', false, NULL, 0, 1,  0, 70),
+  ('straw',    'Straw',    'SELECT',      false, NULL, 0, 1,  0, 80),
+  ('symbol',   'Symbol',   'SELECT',      false, NULL, 0, 1,  0, 90)
+ON CONFLICT (key) DO UPDATE SET max_select = EXCLUDED.max_select;
 
 INSERT INTO customization_options (group_id, value, label, price_delta_cents, active, sort_order)
 SELECT g.id, v.value, v.label, v.price, true, v.sort
@@ -107,16 +115,45 @@ JOIN (VALUES
   ('extras',   'lime',      'Lime',                100, 10),
   ('extras',   'straw',     'Extra straw',           0, 20),
   ('extras',   'spoon',     'Spoon',                 0, 30),
-  ('extras',   'water',     'Extra coconut water', 200, 40)
+  ('extras',   'water',     'Extra coconut water', 200, 40),
+  ('extras',   'hibiscus',  'Hibiscus flower',     200, 50),
+  ('extras',   'umbrella',  'Paper umbrella',      100, 60),
+  ('font',     'bold',      'Bold',                  0, 10),
+  ('font',     'script',    'Script',                0, 20),
+  ('font',     'classic',   'Classic',               0, 30),
+  ('shape',    'round',     'Round',                 0, 10),
+  ('shape',    'oval',      'Oval',                  0, 20),
+  ('straw',    'lime',      'Lime',                  0, 10),
+  ('straw',    'pink',      'Pink',                  0, 20),
+  ('straw',    'yellow',    'Yellow',                0, 30),
+  ('straw',    'blue',      'Blue',                  0, 40),
+  ('symbol',   'heart',     'Heart',                 0, 10),
+  ('symbol',   'star',      'Star',                  0, 20),
+  ('symbol',   'palm',      'Palm',                  0, 30),
+  ('symbol',   'sun',       'Sun',                   0, 40),
+  ('symbol',   'flower',    'Flower',                0, 50)
 ) AS v(group_key, value, label, price, sort) ON v.group_key = g.key
 ON CONFLICT (group_id, value) DO NOTHING;
 
--- Personalisation applies to both products.
+-- Personalisation applies to both products; the second name only to Coco for Two.
 INSERT INTO product_customization_groups (product_id, group_id, required, sort_order)
 SELECT p.id, g.id, false, g.sort_order
 FROM products p CROSS JOIN customization_groups g
 WHERE p.sku IN ('CLASSIC', 'TWO')
+  AND (g.key <> 'name_2' OR p.sku = 'TWO')
 ON CONFLICT (product_id, group_id) DO NOTHING;
+
+-- Coco for Two: garnish and extras go on both coconuts and are charged per coconut.
+UPDATE products SET coconuts = 2 WHERE sku = 'TWO';
+UPDATE customization_groups SET per_coconut = true WHERE key = 'extras';
+
+-- Every prep point starts with every extra in stock; ops switch them off.
+INSERT INTO option_stock (prep_point_id, option_id, in_stock)
+SELECT pp.id, o.id, true
+FROM prep_points pp
+CROSS JOIN customization_options o
+JOIN customization_groups g ON g.id = o.group_id AND g.key = 'extras'
+ON CONFLICT (prep_point_id, option_id) DO NOTHING;
 
 INSERT INTO inventory (prep_point_id, sku, qty_available, qty_reserved)
 SELECT pp.id, p.sku, 0, 0
