@@ -58,8 +58,9 @@ uses 3100. `npm run dev` on its own uses 3000 as normal.
 | 4 — Admin | Done. Staff auth, live order board (Realtime) + at-risk view, zone pause, products, runners. `PHASE-4-NOTES.md`. |
 | 5 — Real payments, email | Code done, unverified live. PayPal + Resend written to spec with pure logic unit tested (`npm test`); this sandbox has neither account nor network egress to either host. `PHASE-5-NOTES.md`. |
 | 6 — Runner PWA | Done. Login, shift, Realtime offers, race-safe accept, pickup/arriving/delivered/undeliverable, cash settlement. Proven end to end; found and fixed a real cross-phase RLS bug along the way. `PHASE-6-NOTES.md`. |
-| 7 — Runner GPS + live map | **Done, schematic map.** GPS during active delivery only (§17), proximity on offers, admin live view. No map-tile host (Mapbox/OSM/unpkg) reachable from this sandbox — verified, not assumed — so positions render on a plain SVG radar instead of real tiles. Found and fixed two more cross-phase RLS/serialization bugs. `PHASE-7-NOTES.md`. |
-| 8+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
+| 7 — Runner GPS + live map | Done, schematic map. GPS during active delivery only (§17), proximity on offers, admin live view. No map-tile host (Mapbox/OSM/unpkg) reachable from this sandbox — verified, not assumed — so positions render on a plain SVG radar instead of real tiles. Found and fixed two more cross-phase RLS/serialization bugs. `PHASE-7-NOTES.md`. |
+| 8 — Build Your Coco | **Done.** Real, live SVG preview wired into the actual `/order` picker (not a separate demo) plus an interactive marketing playground at `/build-your-coco`. `PHASE-8-NOTES.md`. |
+| 9+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
 
 ### Local database
 

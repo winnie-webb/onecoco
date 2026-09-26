@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { CocoPreview } from "@/components/order/CocoPreview";
 import type { CatalogueProductWithCustomizations } from "@/lib/db/queries/catalogue";
 import type { CartItem, CartSelection } from "@/lib/pricing/cart-types";
 
@@ -51,8 +52,20 @@ export function ProductPicker({
 
   if (!product) return null;
 
+  const hasCustomizations = product.customizationGroups.length > 0;
+
   return (
     <div className="text-left">
+      {hasCustomizations && (
+        <CocoPreview
+          design={selectValues.design}
+          name={textValues.name}
+          message={textValues.message}
+          extras={multiValues.extras ?? []}
+          className="mb-6"
+        />
+      )}
+
       <fieldset className="mb-6">
         <legend className="mb-2 text-sm font-bold uppercase tracking-wide text-ink-soft">Pick your coco</legend>
         <div className="flex flex-col gap-2">

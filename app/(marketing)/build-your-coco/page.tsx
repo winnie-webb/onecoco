@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import { BuildTeaser } from "@/components/marketing/BuildTeaser";
+import { InteractiveBuilder } from "@/components/marketing/InteractiveBuilder";
 import { FinalCta } from "@/components/marketing/FinalCta";
 import { Section, Eyebrow } from "@/components/ui/Section";
 import { brand } from "@/lib/brand";
@@ -23,6 +24,7 @@ export default function Page() {
   return (
     <>
       <BuildTeaser />
+      <InteractiveBuilder />
 
       <Section label="What you can change">
         <div className="max-w-2xl">
