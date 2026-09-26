@@ -72,6 +72,53 @@ FROM beaches b WHERE b.slug = 'doctors-cave-beach'
   AND NOT EXISTS (SELECT 1 FROM delivery_zones z WHERE z.beach_id = b.id);
 
 -- ---------------------------------------------------------------------------
+-- A second beach, same city — Phase 11 (§25): "multi-beach expansion,
+-- config only, no rewrite." This section is the proof: it is data, not a
+-- migration, exactly as the comment at the top of this file promises.
+-- Same placeholder-boundary caveat applies — CLOSED until a real surveyed
+-- zone and real vending permission both exist (§27.1, still open).
+-- ---------------------------------------------------------------------------
+INSERT INTO beaches (city_id, name, slug, blurb, center, active, seo_title, seo_description)
+SELECT ci.id,
+       'Walter Fletcher Beach',
+       'walter-fletcher-beach',
+       'A calm, lifeguarded public beach on Montego Bay''s Hip Strip.',
+       ST_GeogFromText('POINT(-77.9187 18.4737)'),
+       true,
+       'Coconut Delivery at Walter Fletcher Beach',
+       'Order a fresh coconut to your spot on Walter Fletcher Beach, Montego Bay.'
+FROM cities ci WHERE ci.slug = 'montego-bay'
+ON CONFLICT (city_id, slug) DO NOTHING;
+
+INSERT INTO prep_points (beach_id, name, location, active)
+SELECT b.id, 'Walter Fletcher cart', ST_GeogFromText('POINT(-77.9188 18.4739)'), true
+FROM beaches b WHERE b.slug = 'walter-fletcher-beach'
+  AND NOT EXISTS (SELECT 1 FROM prep_points p WHERE p.beach_id = b.id);
+
+INSERT INTO delivery_zones (
+  beach_id, name, polygon, delivery_fee_cents,
+  eta_min_minutes, eta_max_minutes, route_factor,
+  operating_hours, service_status, access_notes,
+  requires_property_permission, priority, active
+)
+SELECT b.id,
+       'Walter Fletcher — main strand',
+       ST_GeogFromText(
+         'POLYGON((-77.9199 18.4747, -77.9176 18.4747, -77.9176 18.4728, -77.9199 18.4728, -77.9199 18.4747))'
+       ),
+       200,
+       6, 12,
+       1.35,
+       '{"mon":[["09:00","17:00"]],"tue":[["09:00","17:00"]],"wed":[["09:00","17:00"]],"thu":[["09:00","17:00"]],"fri":[["09:00","17:00"]],"sat":[["09:00","17:00"]],"sun":[["09:00","17:00"]]}'::jsonb,
+       'CLOSED',
+       'PLACEHOLDER BOUNDARY. Redraw against the real beach before opening. Confirm vending permission before this zone is set to OPEN.',
+       true,
+       0,
+       true
+FROM beaches b WHERE b.slug = 'walter-fletcher-beach'
+  AND NOT EXISTS (SELECT 1 FROM delivery_zones z WHERE z.beach_id = b.id);
+
+-- ---------------------------------------------------------------------------
 -- Catalogue
 -- ---------------------------------------------------------------------------
 INSERT INTO products (sku, name, slug, description, base_price_cents, currency, active, sort_order) VALUES
