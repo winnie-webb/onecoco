@@ -12,16 +12,20 @@ Montego Bay, Jamaica.
 | Path | What |
 |---|---|
 | `docs/ARCHITECTURE.md` | **Read this first.** Phase 0 — architecture, schema, flows, roadmap, risks, open questions. |
-| `PHASE-1-NOTES.md`, `PHASE-2-NOTES.md`, `PHASE-3-NOTES.md` | Phase close-outs: what shipped, what was fixed, known gaps. |
-| `app/` | Next.js App Router. Marketing pages, `/order` (location → cart → checkout), `/confirm`, `/track`, `api/v1/*`. |
-| `components/` | `ui/` primitives, `site/` chrome, `marketing/` sections, `order/` (location gate, picker, checkout, tracking). |
+| `PHASE-1-NOTES.md` … `PHASE-4-NOTES.md` | Phase close-outs: what shipped, what was fixed, known gaps. |
+| `app/(marketing)/` | Public site — landing, `/order` (location → cart → checkout), `/confirm`, `/track`. Own root layout (Header/Footer). |
+| `app/(admin)/admin/` | Staff tool — login (unguarded) + `(protected)/{orders,zones,products,runners}`. Own root layout, no site chrome. |
+| `app/api/v1/*` | Route Handlers — customer-facing + `admin/*` (staff-only, audited). |
+| `components/` | `ui/` primitives, `site/` chrome, `marketing/` sections, `order/` (checkout flow), `admin/` (staff UI). |
 | `lib/brand.ts` | The only file containing the brand name. |
-| `lib/db/` | Supabase clients + generated types (`types.ts`, regenerate after any migration). |
+| `lib/db/` | `client.ts` (service-role, server-only), `server.ts`/`browser.ts` (staff auth, RLS-scoped), generated `types.ts`. |
 | `lib/geo/`, `lib/pricing/`, `lib/settings.ts` | Zone resolution, serviceability gate, ETA, quote. |
-| `lib/orders/` | Order creation, the central status-transition maps, tracking, display copy. |
+| `lib/orders/` | Order creation/cancellation, the central status-transition maps, tracking, display copy. |
 | `lib/payments/` | `PaymentProvider` interface + `mock`/`cash` providers, the four-check capture verifier. |
+| `lib/auth/` | Staff role + session guards (Server Components and Route Handlers). |
 | `lib/analytics/events.ts` | Funnel events — no-ops until `NEXT_PUBLIC_POSTHOG_KEY` is set. |
-| `supabase/migrations/` | Schema. 9 migrations, applied in filename order. |
+| `proxy.ts` | Refreshes the staff auth session cookie on `/admin/*` (this Next.js version's renamed `middleware.ts`). |
+| `supabase/migrations/` | Schema. 11 migrations, applied in filename order. |
 | `supabase/seed/jamaica.sql` | Montego Bay pilot configuration. Idempotent. |
 
 ## Running it
@@ -47,8 +51,9 @@ uses 3100. `npm run dev` on its own uses 3000 as normal.
 | 0 — Architecture | Done. `docs/ARCHITECTURE.md`. |
 | 1 — Brand + landing | Done, verified at 375px and 1280px. |
 | 2 — Schema, zones, catalogue | Done. Migrations applied + constraint-verified against a real local database; zone/serviceability resolution and location capture live at `/order`. `PHASE-2-NOTES.md`. |
-| 3 — Cart, checkout, tracking | **Done.** Real quote/order/mock-payment/tracking flow, proven end to end in a real browser. `PHASE-3-NOTES.md`. |
-| 4+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
+| 3 — Cart, checkout, tracking | Done. Real quote/order/mock-payment/tracking flow, proven end to end in a real browser. `PHASE-3-NOTES.md`. |
+| 4 — Admin | **Done.** Staff auth, live order board (Realtime) + at-risk view, zone pause, products, runners. `PHASE-4-NOTES.md`. |
+| 5+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
 
 ### Local database
 
@@ -74,6 +79,27 @@ Things worth knowing:
   --project-ref <ref> && npx supabase db push` against a real project,
   then re-run the seed, is still pending an account (§27.1 also gates
   whether the seed's zone should ever actually open).
+
+### Creating a local admin account
+
+`/admin` needs a staff account, and deliberately isn't seeded with one (a
+hardcoded admin password in committed SQL is exactly the kind of default
+credential that gets forgotten and shipped to production). Create one
+against your local Supabase instance:
+
+```
+curl -s -X POST http://127.0.0.1:54321/auth/v1/admin/users \
+  -H "apikey: <SERVICE_ROLE_KEY>" -H "Authorization: Bearer <SERVICE_ROLE_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"<choose one>","email_confirm":true}'
+```
+
+Then give the returned user's `id` the `ADMIN` role:
+
+```sql
+INSERT INTO app_users (id, email, display_name, role, active)
+VALUES ('<id from above>', 'admin@example.com', 'Local Admin', 'ADMIN', true);
+```
 
 ## Conventions
 

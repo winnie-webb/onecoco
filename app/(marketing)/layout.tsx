@@ -3,7 +3,7 @@ import { Outfit } from "next/font/google";
 import { brand, siteUrl } from "@/lib/brand";
 import { Header } from "@/components/site/Header";
 import { Footer } from "@/components/site/Footer";
-import "./globals.css";
+import "../globals.css";
 
 /*
  * One family, two roles: --font-display and --font-sans both resolve here.

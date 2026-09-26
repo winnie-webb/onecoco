@@ -509,6 +509,13 @@ export type Database = {
             referencedRelation: "orders";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "notifications_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders_at_risk";
+            referencedColumns: ["order_id"];
+          },
         ];
       };
       order_assignments: {
@@ -552,6 +559,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "orders";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_assignments_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders_at_risk";
+            referencedColumns: ["order_id"];
           },
           {
             foreignKeyName: "order_assignments_runner_id_fkey";
@@ -606,6 +620,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "orders";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_events_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders_at_risk";
+            referencedColumns: ["order_id"];
           },
         ];
       };
@@ -698,6 +719,13 @@ export type Database = {
             referencedColumns: ["id"];
           },
           {
+            foreignKeyName: "order_items_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders_at_risk";
+            referencedColumns: ["order_id"];
+          },
+          {
             foreignKeyName: "order_items_product_id_fkey";
             columns: ["product_id"];
             isOneToOne: false;
@@ -739,6 +767,13 @@ export type Database = {
             referencedRelation: "orders";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "order_locations_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders_at_risk";
+            referencedColumns: ["order_id"];
+          },
         ];
       };
       order_offers: {
@@ -776,6 +811,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "orders";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "order_offers_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders_at_risk";
+            referencedColumns: ["order_id"];
           },
           {
             foreignKeyName: "order_offers_runner_id_fkey";
@@ -1139,6 +1181,13 @@ export type Database = {
             isOneToOne: false;
             referencedRelation: "orders";
             referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "payments_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: false;
+            referencedRelation: "orders_at_risk";
+            referencedColumns: ["order_id"];
           },
         ];
       };
@@ -1506,6 +1555,13 @@ export type Database = {
             referencedRelation: "orders";
             referencedColumns: ["id"];
           },
+          {
+            foreignKeyName: "reviews_order_id_fkey";
+            columns: ["order_id"];
+            isOneToOne: true;
+            referencedRelation: "orders_at_risk";
+            referencedColumns: ["order_id"];
+          },
         ];
       };
       runners: {
@@ -1743,7 +1799,41 @@ export type Database = {
       };
     };
     Views: {
-      [_ in never]: never;
+      orders_at_risk: {
+        Row: {
+          beach_id: string | null;
+          device_last_seen_at: string | null;
+          fulfillment_status: Database["public"]["Enums"]["fulfillment_status"] | null;
+          order_id: string | null;
+          order_number: number | null;
+          risk_reason: string | null;
+          runner_id: string | null;
+          zone_id: string | null;
+        };
+        Relationships: [
+          {
+            foreignKeyName: "order_assignments_runner_id_fkey";
+            columns: ["runner_id"];
+            isOneToOne: false;
+            referencedRelation: "runners";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "orders_beach_id_fkey";
+            columns: ["beach_id"];
+            isOneToOne: false;
+            referencedRelation: "beaches";
+            referencedColumns: ["id"];
+          },
+          {
+            foreignKeyName: "orders_zone_id_fkey";
+            columns: ["zone_id"];
+            isOneToOne: false;
+            referencedRelation: "delivery_zones";
+            referencedColumns: ["id"];
+          },
+        ];
+      };
     };
     Functions: {
       current_app_role: {
