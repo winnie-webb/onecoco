@@ -11,8 +11,10 @@ import {
   extras,
   fonts as fontOptions,
   formatUsd,
+  coconutView,
   normalizeSpec,
   occasions,
+  products,
   priceLines,
   shapes,
   specFromParams,
@@ -29,8 +31,8 @@ import { Coco2D } from "./Coco2D";
 
 type Action =
   | { type: "set"; spec: CocoSpec }
-  | { type: "field"; key: "name" | "message"; value: string }
-  | { type: "pick"; key: "design" | "font" | "shape" | "straw" | "symbol"; value: string }
+  | { type: "field"; key: "name" | "name2" | "message"; value: string }
+  | { type: "pick"; key: "product" | "design" | "font" | "shape" | "straw" | "symbol"; value: string }
   | { type: "occasion"; value: string }
   | { type: "extra"; value: string; on: boolean };
 
@@ -39,7 +41,7 @@ function reducer(spec: CocoSpec, a: Action): CocoSpec {
     case "set":
       return a.spec;
     case "field":
-      return { ...spec, [a.key]: cleanText(a.value, a.key === "name" ? NAME_MAX : MESSAGE_MAX) };
+      return { ...spec, [a.key]: cleanText(a.value, a.key === "message" ? MESSAGE_MAX : NAME_MAX) };
     case "pick":
       return normalizeSpec({ ...spec, [a.key]: a.value });
     case "occasion": {
@@ -61,6 +63,10 @@ type Mode = "2d" | "loading" | "3d";
 export function CocoBuilder({ fonts }: { fonts: FontFamilies }) {
   const [spec, dispatch] = useReducer(reducer, defaultSpec);
   const [mode, setMode] = useState<Mode>("2d");
+  // Which coconut of a Coco for Two the preview shows.
+  const [active, setActive] = useState(0);
+  const shown = spec.product === "two" ? active : 0;
+  const view = useMemo(() => coconutView(spec, shown), [spec, shown]);
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const sceneRef = useRef<CocoScene | null>(null);
   const specRef = useRef(spec);
@@ -121,18 +127,18 @@ export function CocoBuilder({ fonts }: { fonts: FontFamilies }) {
   }, [fonts]);
 
   useEffect(() => {
-    specRef.current = spec;
-    sceneRef.current?.update(spec);
-  }, [spec]);
+    specRef.current = view;
+    sceneRef.current?.update(view);
+  }, [view]);
 
   const problems = useMemo(() => validateSpec(spec), [spec]);
   const lines = useMemo(() => priceLines(spec), [spec]);
   const total = lines.reduce((n, l) => n + l.cents, 0);
   const occasion = occasions.find((o) => o.value === spec.occasion);
-  const problemFor = (f: "name" | "message") => problems.find((p) => p.field === f)?.message;
+  const problemFor = (f: "name" | "name2" | "message") => problems.find((p) => p.field === f)?.message;
 
   const share = useCallback(async () => {
-    const canvas = await shareImage(spec, fonts, sceneRef.current);
+    const canvas = await shareImage(view, fonts, sceneRef.current);
     const blob = await new Promise<Blob | null>((r) => canvas.toBlob(r, "image/png"));
     if (!blob) return;
     const file = new File([blob], "my-coco.png", { type: "image/png" });
@@ -151,7 +157,7 @@ export function CocoBuilder({ fonts }: { fonts: FontFamilies }) {
     a.download = file.name;
     a.click();
     setTimeout(() => URL.revokeObjectURL(a.href), 1000);
-  }, [spec, fonts]);
+  }, [view, fonts]);
 
   const orderHref = `/order?${specToParams(spec).toString()}`;
 
@@ -160,14 +166,29 @@ export function CocoBuilder({ fonts }: { fonts: FontFamilies }) {
       {/* Preview */}
       {/* On phones the preview sticks under the header, so it stays in view while they type. */}
       <div className="sticky top-[65px] z-10 -mx-4 bg-sand-50/95 px-4 py-2 backdrop-blur-sm sm:-mx-6 sm:px-6 lg:top-24 lg:mx-0 lg:self-start lg:bg-transparent lg:p-0">
+        {spec.product === "two" && (
+          <div className="mb-2 flex justify-center gap-2" role="group" aria-label="Show coconut">
+            {[spec.name, spec.name2].map((n, i) => (
+              <button
+                key={i}
+                type="button"
+                aria-pressed={shown === i}
+                onClick={() => setActive(i)}
+                className={chipClass(shown === i, "min-h-9 max-w-[45%] truncate")}
+              >
+                {n.trim() || `Coco ${i + 1}`}
+              </button>
+            ))}
+          </div>
+        )}
         <div
           className="relative mx-auto h-[38svh] max-h-[34rem] overflow-hidden rounded-[2rem] bg-gradient-to-b from-sand-100 to-sand-200 lg:h-auto lg:w-full lg:max-w-md"
           style={{ aspectRatio: String(VIEW_ASPECT) }}
           role="img"
-          aria-label={describe(spec)}
+          aria-label={describe(view)}
         >
           <div className={`transition-opacity duration-300 ${mode === "3d" ? "opacity-0" : "opacity-100"}`} aria-hidden="true">
-            <Coco2D spec={spec} fonts={fonts} />
+            <Coco2D spec={view} fonts={fonts} />
           </div>
           <canvas
             ref={canvasRef}
@@ -193,17 +214,48 @@ export function CocoBuilder({ fonts }: { fonts: FontFamilies }) {
 
       {/* Controls */}
       <form className="space-y-8" onSubmit={(e) => e.preventDefault()}>
-        <Field label="Name" hint={`${spec.name.length}/${NAME_MAX}`} error={problemFor("name")}>
+        <Choice
+          legend="Your coco"
+          name="product"
+          value={spec.product}
+          options={products.map((p) => ({ value: p.value, label: `${p.label} · ${formatUsd(p.priceCents)}` }))}
+          onChange={(v) => {
+            dispatch({ type: "pick", key: "product", value: v });
+            setActive(0);
+          }}
+        />
+
+        <Field
+          label={spec.product === "two" ? "First name" : "Name"}
+          hint={`${spec.name.length}/${NAME_MAX}`}
+          error={problemFor("name")}
+        >
           <input
             type="text"
             value={spec.name}
             maxLength={NAME_MAX}
             autoComplete="off"
             placeholder="Sarah"
+            onFocus={() => setActive(0)}
             onChange={(e) => dispatch({ type: "field", key: "name", value: e.target.value })}
             className={inputClass}
           />
         </Field>
+
+        {spec.product === "two" && (
+          <Field label="Second name" hint={`${spec.name2.length}/${NAME_MAX}`} error={problemFor("name2")}>
+            <input
+              type="text"
+              value={spec.name2}
+              maxLength={NAME_MAX}
+              autoComplete="off"
+              placeholder="Tom"
+              onFocus={() => setActive(1)}
+              onChange={(e) => dispatch({ type: "field", key: "name2", value: e.target.value })}
+              className={inputClass}
+            />
+          </Field>
+        )}
 
         <Field label="Message" hint={`${spec.message.length}/${MESSAGE_MAX}`} error={problemFor("message")}>
           <input
@@ -287,7 +339,7 @@ export function CocoBuilder({ fonts }: { fonts: FontFamilies }) {
                     className="size-5 accent-jungle-800"
                   />
                   <span className="flex-1 text-jungle-900">{x.label}</span>
-                  <span className="text-sm text-ink-soft">{x.priceCents ? `+${formatUsd(x.priceCents)}` : "Free"}</span>
+                  <span className="text-sm text-ink-soft">{x.priceCents ? `+${formatUsd(x.priceCents)}${spec.product === "two" ? " each" : ""}` : "Free"}</span>
                 </label>
               </li>
             ))}

@@ -195,10 +195,15 @@ Seed change: `name` group stays at 200 ¢. Add `umbrella` (100 ¢) and `hibiscus
 
 Frame rate and keystroke-to-frame still need measuring on a real low-end Android phone (§3). That can't be done in CI.
 
+**Added in the second pass:**
+- **Coco for Two** in the builder: a second name, a Coco 1 / Coco 2 switch on the preview, stickers charged per name and extras per coconut. Seed: `name_2` group (TWO only), `products.coconuts`, `customization_groups.per_coconut`.
+- **Print sheet** at `/build-your-coco/print?<design link>`: one 300 DPI sticker per printed page at the label's real size, plus PNG downloads and a prep summary. It stands in for the admin "Print sticker" button, and it's what the M0 sticker test prints from.
+- **Garnish stock and printer switch** (migration `0008_build_your_coco.sql`): `option_stock` (in/out per prep point, public read, staff write) and `prep_points.stickers_available`. All migrations plus the seed were applied to Postgres 16 + PostGIS to check them.
+- **Tests**: `npm test` covers pricing, the URL round trip, text cleaning, the blocklist and validation.
+- **Size budget in CI**: `npm run check:size` fails the build if the 3D chunk goes over 30 KB, the builder over 15 KB, or the 3D chunk appears in the initial HTML. `.github/workflows/ci.yml` runs it together with type-check, lint, tests and build.
+
 **Not built yet:**
 - **"Add to order"** links to `/order?…` with the design in the URL. The cart that reads it is Phase 3.
-- **The "Print sticker" button** for the prep point needs the Phase 4 admin. `renderPrintFile(spec, fonts)` is ready for it.
-- **Garnish stock:** hiding out-of-stock garnish needs a schema change, because `inventory` is keyed by product SKU and garnish are customisation options.
-- **Coco for Two stickers** (a second name, +US$2) need a `name_2` group scoped to the TWO product.
-- **Server-side validation** runs when the order API exists; it must call `normalizeSpec` + `validateSpec`.
-- **M0 physical sticker test** and the choice of printer.
+- **The builder doesn't read stock yet.** Once the Supabase client is wired up (Phase 2/3), it should hide garnish where `option_stock.in_stock` is false and hide stickers where `stickers_available` is false. The admin switches for both come with Phase 4.
+- **Quote engine** (Phase 3) must apply `per_coconut` and call `normalizeSpec` + `validateSpec` on the server.
+- **Field checks**: frame rate on a real low-end Android phone, and the M0 physical sticker test.

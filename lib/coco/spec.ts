@@ -10,8 +10,13 @@
  * future order API for validation.
  */
 
-export const BASE_PRICE_CENTS = 700;
 export const STICKER_PRICE_CENTS = 200;
+
+/** Build Your Coco is Classic or Coco for Two plus personalisation (seed: products). */
+export const products = [
+  { value: "classic", label: "One coco", sku: "CLASSIC", priceCents: 700, coconuts: 1 },
+  { value: "two", label: "Coco for Two", sku: "TWO", priceCents: 1200, coconuts: 2 },
+] as const;
 
 export const NAME_MAX = 20;
 export const MESSAGE_MAX = 40;
@@ -70,6 +75,7 @@ export const extras = [
 
 type Values<T extends readonly { value: string }[]> = T[number]["value"];
 
+export type Product = Values<typeof products>;
 export type Design = Values<typeof designs>;
 export type Occasion = Values<typeof occasions>;
 export type Font = Values<typeof fonts>;
@@ -79,7 +85,10 @@ export type SymbolKey = Values<typeof symbols>;
 export type Extra = Values<typeof extras>;
 
 export type CocoSpec = {
+  product: Product;
   name: string;
+  /** Coco for Two only: the second coconut's name. Same design, message and garnish. */
+  name2: string;
   message: string;
   design: Design;
   occasion: Occasion | "";
@@ -91,7 +100,9 @@ export type CocoSpec = {
 };
 
 export const defaultSpec: CocoSpec = {
+  product: "classic",
   name: "",
+  name2: "",
   message: "",
   design: "jamaican",
   occasion: "",
@@ -151,8 +162,12 @@ export function isBlocked(text: string): boolean {
 /** Coerce anything (URL params, a request body) into a valid spec. */
 export function normalizeSpec(input: Partial<Record<keyof CocoSpec, unknown>>): CocoSpec {
   const extrasIn = Array.isArray(input.extras) ? input.extras : [];
+  const product = has(products, input.product) ? input.product : defaultSpec.product;
   return {
+    product,
     name: typeof input.name === "string" ? cleanText(input.name, NAME_MAX) : "",
+    // Kept while they flip between products; ignored everywhere unless product is "two".
+    name2: typeof input.name2 === "string" ? cleanText(input.name2, NAME_MAX) : "",
     message: typeof input.message === "string" ? cleanText(input.message, MESSAGE_MAX) : "",
     design: has(designs, input.design) ? input.design : defaultSpec.design,
     occasion: has(occasions, input.occasion) ? input.occasion : "",
@@ -164,27 +179,57 @@ export function normalizeSpec(input: Partial<Record<keyof CocoSpec, unknown>>): 
   };
 }
 
-export type SpecProblem = { field: "name" | "message"; message: string };
+export type SpecProblem = { field: "name" | "name2" | "message"; message: string };
 
 /** Rules the order API must also enforce — never trust the client. */
 export function validateSpec(spec: CocoSpec): SpecProblem[] {
   const problems: SpecProblem[] = [];
   if (isBlocked(spec.name)) problems.push({ field: "name", message: "Let's keep it friendly." });
+  if (spec.product === "two" && isBlocked(spec.name2)) problems.push({ field: "name2", message: "Let's keep it friendly." });
   if (isBlocked(spec.message)) problems.push({ field: "message", message: "Let's keep it friendly." });
-  if (spec.message.trim() && !spec.name.trim())
+  if (spec.message.trim() && !stickerNames(spec).length)
     problems.push({ field: "name", message: "Add a name to go with your message." });
   return problems;
 }
 
-export const hasSticker = (spec: CocoSpec) => spec.name.trim().length > 0;
+export const productOf = (spec: CocoSpec) => products.find((p) => p.value === spec.product) ?? products[0];
+
+/** The names that get a printed sticker, one per coconut. */
+export function stickerNames(spec: CocoSpec): string[] {
+  const names = [spec.name];
+  if (spec.product === "two") names.push(spec.name2);
+  return names.map((n) => n.trim()).filter(Boolean);
+}
+
+export const hasSticker = (spec: CocoSpec) => stickerNames(spec).length > 0;
+
+/**
+ * The spec as seen on one coconut (0 or 1). Coconut 2 of a Coco for Two
+ * carries the second name; everything else is shared.
+ */
+export const coconutView = (spec: CocoSpec, index: number): CocoSpec =>
+  index === 1 && spec.product === "two" ? { ...spec, name: spec.name2 } : spec;
 
 export type PriceLine = { label: string; cents: number };
 
+/**
+ * Display pricing. Mirrors the quote engine's rules: one sticker charge per
+ * name, and extras charged per coconut (`customization_groups.per_coconut`).
+ */
 export function priceLines(spec: CocoSpec): PriceLine[] {
-  const lines: PriceLine[] = [{ label: "Classic Coco", cents: BASE_PRICE_CENTS }];
-  if (hasSticker(spec)) lines.push({ label: "Custom sticker", cents: STICKER_PRICE_CENTS });
+  const product = productOf(spec);
+  const lines: PriceLine[] = [{ label: product.value === "two" ? "Coco for Two" : "Classic Coco", cents: product.priceCents }];
+  const stickers = stickerNames(spec).length;
+  if (stickers) {
+    lines.push({
+      label: stickers > 1 ? `Custom stickers × ${stickers}` : "Custom sticker",
+      cents: STICKER_PRICE_CENTS * stickers,
+    });
+  }
   for (const e of extras) {
-    if (spec.extras.includes(e.value)) lines.push({ label: e.label, cents: e.priceCents });
+    if (!spec.extras.includes(e.value)) continue;
+    const n = product.coconuts;
+    lines.push({ label: n > 1 && e.priceCents ? `${e.label} × ${n}` : e.label, cents: e.priceCents * n });
   }
   return lines;
 }
@@ -195,7 +240,9 @@ export const formatUsd = (cents: number) =>
 /* ---------- URL <-> spec. Short keys keep shared links readable. ---------- */
 
 const KEYS: Record<Exclude<keyof CocoSpec, "extras">, string> = {
+  product: "p",
   name: "n",
+  name2: "n2",
   message: "m",
   design: "d",
   occasion: "o",
@@ -210,6 +257,7 @@ export function specToParams(spec: CocoSpec): URLSearchParams {
   for (const [k, short] of Object.entries(KEYS) as [keyof typeof KEYS, string][]) {
     if (spec[k] !== defaultSpec[k]) p.set(short, spec[k]);
   }
+  if (spec.product !== "two") p.delete(KEYS.name2);
   if (spec.extras.length) p.set("x", spec.extras.join(","));
   return p;
 }
