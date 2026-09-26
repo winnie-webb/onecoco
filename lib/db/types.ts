@@ -1836,6 +1836,10 @@ export type Database = {
       };
     };
     Functions: {
+      accept_order_offer: {
+        Args: { p_offer_id: string; p_runner_id: string };
+        Returns: Database["public"]["Enums"]["accept_offer_result"];
+      };
       current_app_role: {
         Args: Record<PropertyKey, never>;
         Returns: Database["public"]["Enums"]["app_role"];
@@ -1904,6 +1908,14 @@ export type Database = {
       };
     };
     Enums: {
+      accept_offer_result:
+        | "ACCEPTED"
+        | "OFFER_NOT_FOUND"
+        | "OFFER_ALREADY_RESOLVED"
+        | "OFFER_EXPIRED"
+        | "ORDER_NOT_AWAITING_RUNNER"
+        | "RUNNER_AT_CAPACITY"
+        | "LOST_RACE";
       actor_type: "CUSTOMER" | "OPS" | "RUNNER" | "SYSTEM";
       app_role: "ADMIN" | "OPS" | "RUNNER" | "PARTNER";
       assignment_release_reason:
@@ -2068,6 +2080,15 @@ export const Constants = {
   },
   public: {
     Enums: {
+      accept_offer_result: [
+        "ACCEPTED",
+        "OFFER_NOT_FOUND",
+        "OFFER_ALREADY_RESOLVED",
+        "OFFER_EXPIRED",
+        "ORDER_NOT_AWAITING_RUNNER",
+        "RUNNER_AT_CAPACITY",
+        "LOST_RACE",
+      ],
       actor_type: ["CUSTOMER", "OPS", "RUNNER", "SYSTEM"],
       app_role: ["ADMIN", "OPS", "RUNNER", "PARTNER"],
       assignment_release_reason: [

@@ -15,17 +15,20 @@ Montego Bay, Jamaica.
 | `PHASE-1-NOTES.md` … `PHASE-4-NOTES.md` | Phase close-outs: what shipped, what was fixed, known gaps. |
 | `app/(marketing)/` | Public site — landing, `/order` (location → cart → checkout), `/confirm`, `/track`. Own root layout (Header/Footer). |
 | `app/(admin)/admin/` | Staff tool — login (unguarded) + `(protected)/{orders,zones,products,runners}`. Own root layout, no site chrome. |
-| `app/api/v1/*` | Route Handlers — customer-facing + `admin/*` (staff-only, audited). |
-| `components/` | `ui/` primitives, `site/` chrome, `marketing/` sections, `order/` (checkout flow), `admin/` (staff UI). |
+| `app/(runner)/runner/` | Runner PWA — login + `(protected)/{today,offers,order/[id]}`. Own root layout, mobile-first. |
+| `app/api/v1/*` | Route Handlers — customer-facing + `admin/*` / `runner/*` (staff-only, audited/guarded). |
+| `components/` | `ui/` primitives, `site/` chrome, `marketing/` sections, `order/` (checkout flow), `admin/`, `runner/` (staff UI). |
 | `lib/brand.ts` | The only file containing the brand name. |
-| `lib/db/` | `client.ts` (service-role, server-only), `server.ts`/`browser.ts` (staff auth, RLS-scoped), generated `types.ts`. |
+| `lib/db/` | `client.ts` (service-role, server-only), `server.ts`/`browser.ts` (staff/runner auth, RLS-scoped), generated `types.ts`. |
 | `lib/geo/`, `lib/pricing/`, `lib/settings.ts` | Zone resolution, serviceability gate, ETA, quote. |
-| `lib/orders/` | Order creation/cancellation, the central status-transition maps, tracking, display copy. |
-| `lib/payments/` | `PaymentProvider` interface + `mock`/`cash` providers, the four-check capture verifier. |
-| `lib/auth/` | Staff role + session guards (Server Components and Route Handlers). |
+| `lib/orders/` | Order creation/cancellation/runner transitions, the central status-transition maps, tracking, display copy. |
+| `lib/dispatch/offers.ts` | Creates `order_offers` the moment an order becomes dispatchable (§6). |
+| `lib/payments/` | `PaymentProvider` interface + `mock`/`cash`/`paypal` (unverified live, see `PHASE-5-NOTES.md`) providers, the four-check capture verifier. |
+| `lib/auth/` | Staff + runner role/session guards (Server Components and Route Handlers). |
 | `lib/analytics/events.ts` | Funnel events — no-ops until `NEXT_PUBLIC_POSTHOG_KEY` is set. |
-| `proxy.ts` | Refreshes the staff auth session cookie on `/admin/*` (this Next.js version's renamed `middleware.ts`). |
-| `supabase/migrations/` | Schema. 11 migrations, applied in filename order. |
+| `lib/notifications/` | Email (Resend, unverified live) + console-sink fallback, templates. |
+| `proxy.ts` | Refreshes the staff/runner auth session cookie on `/admin/*` and `/runner/*` (this Next.js version's renamed `middleware.ts`). |
+| `supabase/migrations/` | Schema. 14 migrations, applied in filename order. |
 | `supabase/seed/jamaica.sql` | Montego Bay pilot configuration. Idempotent. |
 
 ## Running it
@@ -53,8 +56,9 @@ uses 3100. `npm run dev` on its own uses 3000 as normal.
 | 2 — Schema, zones, catalogue | Done. Migrations applied + constraint-verified against a real local database; zone/serviceability resolution and location capture live at `/order`. `PHASE-2-NOTES.md`. |
 | 3 — Cart, checkout, tracking | Done. Real quote/order/mock-payment/tracking flow, proven end to end in a real browser. `PHASE-3-NOTES.md`. |
 | 4 — Admin | Done. Staff auth, live order board (Realtime) + at-risk view, zone pause, products, runners. `PHASE-4-NOTES.md`. |
-| 5 — Real payments, email | **Code done, unverified live.** PayPal + Resend written to spec with pure logic unit tested (`npm test`); this sandbox has neither account nor network egress to either host. `PHASE-5-NOTES.md`. |
-| 6+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
+| 5 — Real payments, email | Code done, unverified live. PayPal + Resend written to spec with pure logic unit tested (`npm test`); this sandbox has neither account nor network egress to either host. `PHASE-5-NOTES.md`. |
+| 6 — Runner PWA | **Done.** Login, shift, Realtime offers, race-safe accept, pickup/arriving/delivered/undeliverable, cash settlement. Proven end to end; found and fixed a real cross-phase RLS bug along the way. `PHASE-6-NOTES.md`. |
+| 7+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
 
 ### Local database
 
@@ -100,6 +104,20 @@ Then give the returned user's `id` the `ADMIN` role:
 ```sql
 INSERT INTO app_users (id, email, display_name, role, active)
 VALUES ('<id from above>', 'admin@example.com', 'Local Admin', 'ADMIN', true);
+```
+
+### Creating a local runner account
+
+Same idea, `role: 'RUNNER'`, plus a `runners` row (the admin `/admin/runners`
+page does all of this for you against a real signed-in admin session — this
+manual path is only for when you need one before an admin account exists):
+
+```sql
+INSERT INTO app_users (id, email, display_name, role, active)
+VALUES ('<id from the admin API call above>', 'runner1@example.com', 'Local Runner', 'RUNNER', true);
+
+INSERT INTO runners (user_id, name, phone, home_beach_id, active)
+SELECT '<same id>', 'Local Runner', '+1', b.id, true FROM beaches b WHERE b.slug = 'doctors-cave-beach';
 ```
 
 ## Conventions

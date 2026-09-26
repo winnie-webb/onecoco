@@ -3,6 +3,7 @@ import type { Json } from "@/lib/db/types";
 import { getProvider } from "@/lib/payments";
 import { assertFulfillmentTransition, assertPaymentTransition } from "@/lib/orders/state";
 import { sendNotification } from "@/lib/notifications/transport";
+import { createOffersForOrder } from "@/lib/dispatch/offers";
 
 export class CaptureError extends Error {
   constructor(
@@ -117,6 +118,7 @@ export async function captureAndApply(paymentId: string, providerRefFromClient?:
   if (order.fulfillment_status === "PLACED") {
     assertFulfillmentTransition("PLACED", "AWAITING_RUNNER");
     await db.from("orders").update({ fulfillment_status: "AWAITING_RUNNER" }).eq("id", order.id).eq("fulfillment_status", "PLACED");
+    await createOffersForOrder(order.id);
   }
 
   const { data: customer } = await db.from("orders").select("contact_email, order_number").eq("id", order.id).single();

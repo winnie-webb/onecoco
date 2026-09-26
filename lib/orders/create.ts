@@ -6,6 +6,7 @@ import { computeQuote, type CartItem } from "@/lib/pricing/quote";
 import { getSettings } from "@/lib/settings";
 import { assertFulfillmentTransition, type PaymentStatus } from "@/lib/orders/state";
 import { sendNotification } from "@/lib/notifications/transport";
+import { createOffersForOrder } from "@/lib/dispatch/offers";
 
 export class OrderCreationError extends Error {
   constructor(
@@ -228,6 +229,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
       .update({ fulfillment_status: "AWAITING_RUNNER" })
       .eq("id", order.id)
       .eq("fulfillment_status", "PLACED");
+    await createOffersForOrder(order.id);
   }
 
   await sendNotification({
