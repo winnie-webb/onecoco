@@ -1,6 +1,6 @@
 import type { Metadata } from "next";
 import { Section, Eyebrow } from "@/components/ui/Section";
-import { Button } from "@/components/ui/Button";
+import { LocationGate } from "@/components/order/LocationGate";
 import { brand } from "@/lib/brand";
 
 export const metadata: Metadata = {
@@ -9,34 +9,22 @@ export const metadata: Metadata = {
 };
 
 /**
- * HONEST PLACEHOLDER.
- *
- * Ordering is Phases 2–3 and genuinely does not exist yet. This page says so
- * plainly rather than presenting a flow that cannot complete — the primary CTA
- * has to lead somewhere truthful, not to a 404 or a mock checkout.
+ * Phase 2: real location capture + real zone/serviceability resolution
+ * (docs/ARCHITECTURE.md §9, §13). Checkout itself is Phase 3 and still does
+ * not exist — this page says exactly that when a spot IS serviceable,
+ * rather than leading into a flow that can't complete. See PHASE-2-NOTES.md.
  */
 export default function Page() {
   return (
     <Section label="Ordering">
       <div className="mx-auto max-w-xl text-center">
-        <Eyebrow>Nearly</Eyebrow>
+        <Eyebrow>{brand.marketShort}</Eyebrow>
         <h1 className="font-display text-4xl font-extrabold text-jungle-900 sm:text-5xl">
-          Ordering isn&rsquo;t open yet.
+          Are we at your spot?
         </h1>
-        <p className="mt-5 text-pretty text-lg leading-relaxed text-ink-soft">
-          {brand.name} is getting ready to launch on its first beach in{" "}
-          {brand.market}. The moment we can actually put a cold coco in your
-          hand, this is where you&rsquo;ll do it.
-        </p>
-
-        <div className="mt-9 flex flex-col gap-3 sm:flex-row sm:justify-center">
-          <Button href="/how-it-works" size="lg">
-            See how it will work
-          </Button>
-          <Button href="/" variant="outline" size="lg">
-            Back to the start
-          </Button>
-        </div>
+      </div>
+      <div className="mt-9">
+        <LocationGate />
       </div>
     </Section>
   );
