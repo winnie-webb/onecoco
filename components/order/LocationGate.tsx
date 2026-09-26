@@ -2,7 +2,9 @@
 
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
+import { CheckoutFlow } from "@/components/order/CheckoutFlow";
 import { track } from "@/lib/analytics/events";
+import type { CatalogueProductWithCustomizations } from "@/lib/db/queries/catalogue";
 
 type ResolveResponse =
   | { match: "none"; serviceable: false; reason: "OUT_OF_ZONE" }
@@ -39,9 +41,10 @@ const REASON_COPY: Record<string, string> = {
   OUT_OF_STOCK: "we're out of coconuts to prep right now",
 };
 
-export function LocationGate() {
+export function LocationGate({ products }: { products: CatalogueProductWithCustomizations[] }) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [result, setResult] = useState<ResolveResponse | null>(null);
+  const [coords, setCoords] = useState<{ lat: number; lng: number; accuracyM: number | null } | null>(null);
   const [demandEmail, setDemandEmail] = useState("");
   const [demandLabel, setDemandLabel] = useState("");
   const [demandSubmitted, setDemandSubmitted] = useState(false);
@@ -63,6 +66,7 @@ export function LocationGate() {
       async (position) => {
         track("location_granted");
         const { latitude, longitude, accuracy } = position.coords;
+        setCoords({ lat: latitude, lng: longitude, accuracyM: accuracy });
         try {
           const res = await fetch("/api/v1/zones/resolve", {
             method: "POST",
@@ -214,20 +218,19 @@ export function LocationGate() {
             </>
           )}
 
-          {result.match === "covered" && result.serviceable && (
-            <>
-              <h2 className="font-display text-2xl font-bold text-jungle-900">
+          {result.match === "covered" && result.serviceable && coords && (
+            <div className="text-left">
+              <h2 className="text-center font-display text-2xl font-bold text-jungle-900">
                 Good news — {result.zone.beachName ?? result.zone.name} is covered.
               </h2>
-              <p className="mt-3 text-pretty leading-relaxed text-ink-soft">
+              <p className="mt-3 text-center text-pretty leading-relaxed text-ink-soft">
                 Delivery fee US${(result.zone.deliveryFeeCents / 100).toFixed(2)}, arriving in{" "}
                 {result.etaMinMinutes}–{result.etaMaxMinutes} minutes.
               </p>
-              <p className="mt-4 text-sm text-ink-soft">
-                Ordering itself is the next thing we&rsquo;re building — this
-                page can already tell you whether we reach you, honestly.
-              </p>
-            </>
+              <div className="mt-6">
+                <CheckoutFlow products={products} lat={coords.lat} lng={coords.lng} accuracyM={coords.accuracyM} />
+              </div>
+            </div>
           )}
 
           {"lowAccuracy" in result && result.lowAccuracy && (

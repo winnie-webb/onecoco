@@ -2,19 +2,28 @@ import type { Metadata } from "next";
 import { Section, Eyebrow } from "@/components/ui/Section";
 import { LocationGate } from "@/components/order/LocationGate";
 import { brand } from "@/lib/brand";
+import { getFullCatalogue } from "@/lib/db/queries/catalogue";
 
 export const metadata: Metadata = {
   title: brand.cta,
   robots: { index: false, follow: true },
 };
 
+// Otherwise Next prerenders this at BUILD time and bakes in whatever the
+// catalogue looked like then — wrong the moment a product is renamed or
+// repriced without a redeploy.
+export const dynamic = "force-dynamic";
+
 /**
- * Phase 2: real location capture + real zone/serviceability resolution
- * (docs/ARCHITECTURE.md §9, §13). Checkout itself is Phase 3 and still does
- * not exist — this page says exactly that when a spot IS serviceable,
- * rather than leading into a flow that can't complete. See PHASE-2-NOTES.md.
+ * Phase 2 gave this page real location capture + zone/serviceability
+ * resolution (docs/ARCHITECTURE.md §9, §13). Phase 3 adds the rest of the
+ * flow behind it — catalogue, quote, checkout, guest tracking — but only
+ * when a spot actually resolves as serviceable; every other branch still
+ * says exactly where it stands rather than leading into a dead end.
  */
-export default function Page() {
+export default async function Page() {
+  const products = await getFullCatalogue();
+
   return (
     <Section label="Ordering">
       <div className="mx-auto max-w-xl text-center">
@@ -24,7 +33,7 @@ export default function Page() {
         </h1>
       </div>
       <div className="mt-9">
-        <LocationGate />
+        <LocationGate products={products} />
       </div>
     </Section>
   );

@@ -12,12 +12,14 @@ Montego Bay, Jamaica.
 | Path | What |
 |---|---|
 | `docs/ARCHITECTURE.md` | **Read this first.** Phase 0 — architecture, schema, flows, roadmap, risks, open questions. |
-| `PHASE-1-NOTES.md`, `PHASE-2-NOTES.md` | Phase close-outs: what shipped, what was fixed, known gaps. |
-| `app/` | Next.js App Router. Marketing pages, `/order` (location + zone resolution), `api/v1/*`. |
-| `components/` | `ui/` primitives, `site/` chrome, `marketing/` sections, `order/` (location gate). |
+| `PHASE-1-NOTES.md`, `PHASE-2-NOTES.md`, `PHASE-3-NOTES.md` | Phase close-outs: what shipped, what was fixed, known gaps. |
+| `app/` | Next.js App Router. Marketing pages, `/order` (location → cart → checkout), `/confirm`, `/track`, `api/v1/*`. |
+| `components/` | `ui/` primitives, `site/` chrome, `marketing/` sections, `order/` (location gate, picker, checkout, tracking). |
 | `lib/brand.ts` | The only file containing the brand name. |
 | `lib/db/` | Supabase clients + generated types (`types.ts`, regenerate after any migration). |
-| `lib/geo/`, `lib/pricing/`, `lib/settings.ts` | Zone resolution, serviceability gate, ETA, settings. |
+| `lib/geo/`, `lib/pricing/`, `lib/settings.ts` | Zone resolution, serviceability gate, ETA, quote. |
+| `lib/orders/` | Order creation, the central status-transition maps, tracking, display copy. |
+| `lib/payments/` | `PaymentProvider` interface + `mock`/`cash` providers, the four-check capture verifier. |
 | `lib/analytics/events.ts` | Funnel events — no-ops until `NEXT_PUBLIC_POSTHOG_KEY` is set. |
 | `supabase/migrations/` | Schema. 9 migrations, applied in filename order. |
 | `supabase/seed/jamaica.sql` | Montego Bay pilot configuration. Idempotent. |
@@ -44,8 +46,9 @@ uses 3100. `npm run dev` on its own uses 3000 as normal.
 |---|---|
 | 0 — Architecture | Done. `docs/ARCHITECTURE.md`. |
 | 1 — Brand + landing | Done, verified at 375px and 1280px. |
-| 2 — Schema, zones, catalogue | **Done.** Migrations applied + constraint-verified against a real local database; zone/serviceability resolution and location capture live at `/order`. `PHASE-2-NOTES.md`. |
-| 3+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
+| 2 — Schema, zones, catalogue | Done. Migrations applied + constraint-verified against a real local database; zone/serviceability resolution and location capture live at `/order`. `PHASE-2-NOTES.md`. |
+| 3 — Cart, checkout, tracking | **Done.** Real quote/order/mock-payment/tracking flow, proven end to end in a real browser. `PHASE-3-NOTES.md`. |
+| 4+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
 
 ### Local database
 
