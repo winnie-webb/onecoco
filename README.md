@@ -52,8 +52,9 @@ uses 3100. `npm run dev` on its own uses 3000 as normal.
 | 1 — Brand + landing | Done, verified at 375px and 1280px. |
 | 2 — Schema, zones, catalogue | Done. Migrations applied + constraint-verified against a real local database; zone/serviceability resolution and location capture live at `/order`. `PHASE-2-NOTES.md`. |
 | 3 — Cart, checkout, tracking | Done. Real quote/order/mock-payment/tracking flow, proven end to end in a real browser. `PHASE-3-NOTES.md`. |
-| 4 — Admin | **Done.** Staff auth, live order board (Realtime) + at-risk view, zone pause, products, runners. `PHASE-4-NOTES.md`. |
-| 5+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
+| 4 — Admin | Done. Staff auth, live order board (Realtime) + at-risk view, zone pause, products, runners. `PHASE-4-NOTES.md`. |
+| 5 — Real payments, email | **Code done, unverified live.** PayPal + Resend written to spec with pure logic unit tested (`npm test`); this sandbox has neither account nor network egress to either host. `PHASE-5-NOTES.md`. |
+| 6+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
 
 ### Local database
 
@@ -107,3 +108,7 @@ VALUES ('<id from above>', 'admin@example.com', 'Local Admin', 'ADMIN', true);
 - No price is ever a literal in application code.
 - Mobile first. Verify at 375px before desktop.
 - Nothing is described as working until it has been run.
+- `npm test` runs the Vitest suite (pure logic only — order state
+  transitions, PayPal response parsing, email request shaping). Anything
+  that touches the database is verified by hand against a real local
+  Supabase instance instead; see each phase's notes for what was run.

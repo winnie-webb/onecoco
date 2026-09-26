@@ -24,7 +24,7 @@ export async function cancelOrderAsOps(orderId: string, reason: string, actorUse
 
   const { data: order, error: orderError } = await db
     .from("orders")
-    .select("id, fulfillment_status, payment_status, amount_captured_cents")
+    .select("id, fulfillment_status, payment_status, amount_captured_cents, currency")
     .eq("id", orderId)
     .single();
   if (orderError || !order) throw new CancelError("order not found", "NOT_FOUND");
@@ -51,6 +51,7 @@ export async function cancelOrderAsOps(orderId: string, reason: string, actorUse
       const outcome = await provider.refund({
         providerCaptureId: payment.provider_capture_id,
         amountCents: order.amount_captured_cents,
+        currency: order.currency,
         reason: `order cancelled by ops: ${reason}`,
       });
 

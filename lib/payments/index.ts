@@ -33,6 +33,7 @@ export type CaptureOutcome =
 export interface RefundArgs {
   providerCaptureId: string;
   amountCents: number;
+  currency: string;
   reason?: string;
 }
 
@@ -66,8 +67,11 @@ export async function getProvider(name: string): Promise<PaymentProvider> {
       const { cashProvider } = await import("./cash");
       return cashProvider;
     }
-    case "paypal":
-      throw new ProviderNotConfiguredError("paypal"); // Phase 5
+    case "paypal": {
+      const { paypalProvider } = await import("./paypal");
+      if (!paypalProvider.isConfigured()) throw new ProviderNotConfiguredError("paypal");
+      return paypalProvider;
+    }
     case "stripe":
       throw new ProviderNotConfiguredError("stripe"); // Phase 5+
     default:
