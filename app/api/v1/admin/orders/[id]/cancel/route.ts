@@ -18,8 +18,9 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
   }
   const reason = typeof body.reason === "string" && body.reason.trim() ? body.reason.trim() : "Cancelled by staff";
 
+  let refund;
   try {
-    await cancelOrderAsOps(id, reason, guard.session.userId);
+    refund = await cancelOrderAsOps(id, reason, guard.session.userId);
   } catch (err) {
     if (err instanceof CancelError) {
       return NextResponse.json({ error: err.message, code: err.code }, { status: err.code === "NOT_FOUND" ? 404 : 400 });
@@ -33,8 +34,14 @@ export async function POST(request: Request, context: { params: Promise<{ id: st
     action: "ORDER_CANCELLED",
     entity: "orders",
     entity_id: id,
-    after: { reason },
+    after: { reason, refund: refund.status },
   });
 
-  return NextResponse.json({ ok: true });
+  if (refund.status === "FAILED") {
+    return NextResponse.json(
+      { ok: false, cancelled: true, refund: "FAILED", error: `Order cancelled, but the refund failed: ${refund.reason}. Refund it from the PayPal dashboard.` },
+      { status: 502 },
+    );
+  }
+  return NextResponse.json({ ok: true, refund: refund.status });
 }

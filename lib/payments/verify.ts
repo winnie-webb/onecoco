@@ -4,6 +4,7 @@ import { getProvider } from "@/lib/payments";
 import { assertFulfillmentTransition, assertPaymentTransition } from "@/lib/orders/state";
 import { sendNotification } from "@/lib/notifications/transport";
 import { createOffersForOrder } from "@/lib/dispatch/offers";
+import { getSettings } from "@/lib/settings";
 
 export class CaptureError extends Error {
   constructor(
@@ -54,6 +55,14 @@ export async function captureAndApply(paymentId: string, providerRefFromClient?:
     .eq("id", payment.order_id)
     .single();
   if (orderError || !order) throw new CaptureError("order not found for this payment", "ORDER_NOT_FOUND");
+
+  // Never take money for an order that is no longer waiting for it — e.g.
+  // the sweep expired an abandoned checkout and the customer came back
+  // from PayPal later. Approval alone moves no money, so refusing here is
+  // safe; capturing first and noticing after would not be.
+  if (order.payment_status !== "UNPAID" && order.payment_status !== "AUTHORIZED") {
+    throw new CaptureError(`order payment_status is ${order.payment_status}; not capturing`, "ORDER_NOT_PAYABLE");
+  }
 
   const provider = await getProvider(payment.provider);
   const outcome = await provider.capture({
@@ -117,7 +126,15 @@ export async function captureAndApply(paymentId: string, providerRefFromClient?:
 
   if (order.fulfillment_status === "PLACED") {
     assertFulfillmentTransition("PLACED", "AWAITING_RUNNER");
-    await db.from("orders").update({ fulfillment_status: "AWAITING_RUNNER" }).eq("id", order.id).eq("fulfillment_status", "PLACED");
+    // The accept window starts now, not at order creation: a customer can
+    // spend minutes on the PayPal page, and that time mustn't eat into the
+    // runners' window (or trip the expiry sweep early).
+    const { acceptWindowMinutes } = await getSettings();
+    await db
+      .from("orders")
+      .update({ fulfillment_status: "AWAITING_RUNNER", accept_deadline_at: new Date(Date.now() + acceptWindowMinutes * 60_000).toISOString() })
+      .eq("id", order.id)
+      .eq("fulfillment_status", "PLACED");
     const isDispatchableNow = !order.scheduled_for || new Date(order.scheduled_for).getTime() <= Date.now();
     if (isDispatchableNow) await createOffersForOrder(order.id);
   }

@@ -8,6 +8,7 @@ import { assertFulfillmentTransition, type PaymentStatus } from "@/lib/orders/st
 import { sendNotification } from "@/lib/notifications/transport";
 import { createOffersForOrder } from "@/lib/dispatch/offers";
 import { resolveQrCode } from "@/lib/growth/qr";
+import { siteUrl } from "@/lib/brand";
 
 export class OrderCreationError extends Error {
   constructor(
@@ -27,7 +28,7 @@ export interface CreateOrderInput {
   customerDescription?: string;
   deliveryNote?: string;
   location?: { lat: number; lng: number; accuracyM?: number };
-  paymentProvider: "mock" | "cash";
+  paymentProvider: "mock" | "cash" | "paypal";
   /** §2: "one table and one URL parameter." Unresolvable/expired/inactive
    * codes are silently ignored — attribution never blocks a checkout. */
   qrCode?: string;
@@ -261,7 +262,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
     channel: "EMAIL",
     template: "order_confirmation",
     recipient: email,
-    data: { orderNumber: order.order_number, totalCents: fresh.totalCents },
+    data: { orderNumber: order.order_number, totalCents: fresh.totalCents, trackUrl: `${siteUrl}/track/${trackToken}` },
   });
 
   return {

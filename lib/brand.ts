@@ -28,10 +28,16 @@ export const brand = {
   market: "Montego Bay, Jamaica",
   marketShort: "Montego Bay",
 
+  /**
+   * Real contact details come from env (audit T-5) so they're set per
+   * deployment, not guessed in source. `scripts/check-production.mjs`
+   * refuses to pass while these are unset or still the placeholder.
+   * whatsapp: international digits only, e.g. 18765550123 (wa.me format).
+   */
   contact: {
-    email: "hello@example.com",
-    whatsapp: "",
-    instagram: "",
+    email: process.env.NEXT_PUBLIC_CONTACT_EMAIL || "hello@example.com",
+    whatsapp: process.env.NEXT_PUBLIC_CONTACT_WHATSAPP || "",
+    instagram: process.env.NEXT_PUBLIC_CONTACT_INSTAGRAM || "",
   },
 } as const;
 

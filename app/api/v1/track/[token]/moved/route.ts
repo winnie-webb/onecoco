@@ -22,7 +22,7 @@ function isFiniteNumber(value: unknown): value is number {
 export async function POST(request: Request, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
 
-  if (isRateLimited(`track-moved:${clientIp(request)}`, 10, 60_000)) {
+  if (await isRateLimited(`track-moved:${clientIp(request)}`, 10, 60_000)) {
     return NextResponse.json({ error: "too many requests" }, { status: 429 });
   }
 

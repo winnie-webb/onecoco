@@ -21,7 +21,7 @@ function isFiniteNumber(value: unknown): value is number {
 export async function POST(request: Request) {
   // §16: re-quoting on every cart edit is normal, legitimate traffic —
   // generous enough not to interfere with that, still a real ceiling.
-  if (isRateLimited(`quote:${clientIp(request)}`, 60, 60_000)) {
+  if (await isRateLimited(`quote:${clientIp(request)}`, 60, 60_000)) {
     return NextResponse.json({ error: "too many requests" }, { status: 429 });
   }
 

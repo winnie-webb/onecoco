@@ -135,9 +135,15 @@ export async function applyRunnerTransition(input: RunnerTransitionInput): Promi
       }
     }
 
-    const { data: fresh } = await db.from("orders").select("contact_email, order_number").eq("id", order.id).single();
-    if (fresh) {
-      await sendNotification({ orderId: order.id, channel: "EMAIL", template: "order_confirmation", recipient: fresh.contact_email ?? "", data: { orderNumber: fresh.order_number } });
+    const { data: fresh } = await db.from("orders").select("contact_email, order_number, total_cents").eq("id", order.id).single();
+    if (fresh?.contact_email) {
+      await sendNotification({
+        orderId: order.id,
+        channel: "EMAIL",
+        template: "order_delivered",
+        recipient: fresh.contact_email,
+        data: { orderNumber: fresh.order_number, totalCents: fresh.total_cents },
+      });
     }
     return;
   }

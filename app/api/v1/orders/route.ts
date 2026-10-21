@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { createOrder, OrderCreationError } from "@/lib/orders/create";
 import { clientIp, isRateLimited } from "@/lib/security/rate-limit";
+import { cardProvider } from "@/lib/payments/availability";
 
 export const dynamic = "force-dynamic";
 
@@ -40,7 +41,7 @@ export async function POST(request: Request) {
   // §16: named explicitly alongside /quote, /demand, /track. A double-tap
   // retry on a laggy connection is a handful of requests, not tens — the
   // idempotency key already makes a retry safe, this just caps abuse.
-  if (isRateLimited(`orders:${clientIp(request)}`, 10, 60_000)) {
+  if (await isRateLimited(`orders:${clientIp(request)}`, 10, 60_000)) {
     return NextResponse.json({ error: "too many requests" }, { status: 429 });
   }
 
@@ -58,8 +59,13 @@ export async function POST(request: Request) {
   if (!contact || !isNonEmptyString(contact.name) || !isNonEmptyString(contact.phone) || !isNonEmptyString(contact.email)) {
     return NextResponse.json({ error: "contact.name, contact.phone and contact.email are required" }, { status: 400 });
   }
-  if (body.paymentProvider !== "mock" && body.paymentProvider !== "cash") {
-    return NextResponse.json({ error: 'paymentProvider must be "mock" or "cash"' }, { status: 400 });
+  // Cash always; a card provider only if it's the one this deployment
+  // offers — never "mock" in production, never "paypal" unconfigured, so a
+  // card order can't be created only to fail at payment start.
+  const card = cardProvider();
+  const paymentProvider = body.paymentProvider === "cash" ? "cash" : card !== null && body.paymentProvider === card ? card : null;
+  if (!paymentProvider) {
+    return NextResponse.json({ error: `paymentProvider must be "cash"${card ? ` or "${card}"` : ""}` }, { status: 400 });
   }
 
   let location: { lat: number; lng: number; accuracyM?: number } | undefined;
@@ -80,7 +86,7 @@ export async function POST(request: Request) {
       customerDescription: isNonEmptyString(body.customerDescription) ? body.customerDescription : undefined,
       deliveryNote: isNonEmptyString(body.deliveryNote) ? body.deliveryNote : undefined,
       location,
-      paymentProvider: body.paymentProvider,
+      paymentProvider,
       qrCode: isNonEmptyString(body.qrCode) ? body.qrCode : undefined,
     });
     return NextResponse.json(order, { status: 201 });

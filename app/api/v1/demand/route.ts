@@ -43,7 +43,7 @@ export async function POST(request: Request) {
   // §16: same vague success on every failure mode, rate limiting included —
   // a bot that floods this learns nothing different than one that trips
   // the honeypot.
-  if (isRateLimited(`demand:${clientIp(request)}`, 10, 60_000)) {
+  if (await isRateLimited(`demand:${clientIp(request)}`, 10, 60_000)) {
     return vagueOk();
   }
 

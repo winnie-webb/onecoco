@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState } from "react";
 import { Button } from "@/components/ui/Button";
 import { CheckoutFlow } from "@/components/order/CheckoutFlow";
+import type { CardProvider } from "@/lib/payments/availability";
 import { track } from "@/lib/analytics/events";
 import type { CatalogueProductWithCustomizations } from "@/lib/db/queries/catalogue";
 
@@ -41,7 +42,15 @@ const REASON_COPY: Record<string, string> = {
   OUT_OF_STOCK: "we're out of coconuts to prep right now",
 };
 
-export function LocationGate({ products, qrCode }: { products: CatalogueProductWithCustomizations[]; qrCode?: string }) {
+export function LocationGate({
+  products,
+  qrCode,
+  cardProvider,
+}: {
+  products: CatalogueProductWithCustomizations[];
+  qrCode?: string;
+  cardProvider: CardProvider | null;
+}) {
   const [phase, setPhase] = useState<Phase>("idle");
   const [result, setResult] = useState<ResolveResponse | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number; accuracyM: number | null } | null>(null);
@@ -228,7 +237,14 @@ export function LocationGate({ products, qrCode }: { products: CatalogueProductW
                 {result.etaMinMinutes}–{result.etaMaxMinutes} minutes.
               </p>
               <div className="mt-6">
-                <CheckoutFlow products={products} lat={coords.lat} lng={coords.lng} accuracyM={coords.accuracyM} qrCode={qrCode} />
+                <CheckoutFlow
+                  products={products}
+                  lat={coords.lat}
+                  lng={coords.lng}
+                  accuracyM={coords.accuracyM}
+                  qrCode={qrCode}
+                  cardProvider={cardProvider}
+                />
               </div>
             </div>
           )}

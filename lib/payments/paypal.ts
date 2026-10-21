@@ -24,6 +24,10 @@ function baseUrl(): string {
   return process.env.PAYPAL_ENVIRONMENT === "live" ? "https://api-m.paypal.com" : "https://api-m.sandbox.paypal.com";
 }
 
+// Audit T-1: no PayPal call may hang a request on beach signal / a PayPal
+// incident. 10 s is well inside Vercel's function limit.
+const TIMEOUT_MS = 10_000;
+
 function environment(): PaymentEnvironment {
   return process.env.PAYPAL_ENVIRONMENT === "live" ? "live" : "sandbox";
 }
@@ -40,6 +44,7 @@ async function getAccessToken(): Promise<string> {
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: "grant_type=client_credentials",
+    signal: AbortSignal.timeout(TIMEOUT_MS),
   });
   if (!res.ok) throw new Error(`PayPal OAuth token request failed: ${res.status} ${await res.text()}`);
   const data = (await res.json()) as { access_token: string };
@@ -127,10 +132,16 @@ export const paypalProvider: PaymentProvider = {
           },
         ],
         application_context: {
-          return_url: `${siteUrl}/api/v1/payments/paypal/return`,
-          cancel_url: `${siteUrl}/order`,
+          // PayPal appends ?token=<PayPal order id>. That page captures
+          // server-side via POST /payments/paypal/capture; the webhook is
+          // the backstop if the customer never makes it back.
+          return_url: `${siteUrl}/order/paypal-return`,
+          cancel_url: `${siteUrl}/order/paypal-return?cancelled=1`,
+          shipping_preference: "NO_SHIPPING",
+          user_action: "PAY_NOW",
         },
       }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     if (!res.ok) throw new Error(`PayPal order creation failed: ${res.status} ${await res.text()}`);
 
@@ -148,8 +159,21 @@ export const paypalProvider: PaymentProvider = {
         "Content-Type": "application/json",
         "PayPal-Request-Id": args.expectedOrderId,
       },
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
-    const body = (await res.json()) as PayPalOrderResponse;
+    const body = (await res.json()) as PayPalOrderResponse & { details?: { issue?: string }[] };
+    // Our earlier capture call succeeded at PayPal but we never saw the
+    // response (timeout, dropped lambda) and the webhook is now replaying
+    // it. Read the order instead of recording a false failure.
+    if (res.status === 422 && body.details?.some((d) => d.issue === "ORDER_ALREADY_CAPTURED")) {
+      const orderRes = await fetch(`${baseUrl()}/v2/checkout/orders/${args.providerRef}`, {
+        headers: { Authorization: `Bearer ${token}` },
+        signal: AbortSignal.timeout(TIMEOUT_MS),
+      });
+      const order = (await orderRes.json()) as PayPalOrderResponse;
+      if (!orderRes.ok) return { status: "FAILED", reason: `PayPal order lookup returned ${orderRes.status}`, raw: order };
+      return parseCaptureResponse(order, args.expectedOrderId);
+    }
     if (!res.ok) {
       return { status: "FAILED", reason: `PayPal capture returned ${res.status}`, raw: body };
     }
@@ -162,6 +186,7 @@ export const paypalProvider: PaymentProvider = {
       method: "POST",
       headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
       body: JSON.stringify({ amount: { value: (args.amountCents / 100).toFixed(2), currency_code: args.currency }, note_to_payer: args.reason }),
+      signal: AbortSignal.timeout(TIMEOUT_MS),
     });
     const body = await res.json();
     if (!res.ok) {

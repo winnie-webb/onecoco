@@ -21,6 +21,8 @@ interface TrackPayload {
   totalCents: number;
   currency: string;
   cashDue: boolean;
+  refunded: boolean;
+  charged: boolean;
 }
 
 const TERMINAL: FulfillmentStatus[] = ["DELIVERED", "CANCELLED", "EXPIRED", "UNDELIVERABLE"];
@@ -139,6 +141,21 @@ export function TrackView({ token, justConfirmed = false }: { token: string; jus
             {movedSent ? "Got it — thanks!" : "I moved"}
           </Button>
         </div>
+      )}
+
+      {payload.fulfillmentStatus === "EXPIRED" && (
+        <p className="mt-4 text-ink-soft">
+          Sorry — no runner was free to take your order in time, so we&rsquo;ve cancelled it.{" "}
+          {payload.refunded
+            ? "Your payment has been refunded in full."
+            : payload.charged
+              ? "We're refunding your payment and will email you once it's done."
+              : "You haven't been charged."}
+        </p>
+      )}
+
+      {payload.refunded && payload.fulfillmentStatus === "CANCELLED" && (
+        <p className="mt-4 text-sm text-ink-soft">Your payment has been refunded in full.</p>
       )}
 
       {payload.fulfillmentStatus === "CANCELLED" && payload.cancelledReason && (

@@ -103,6 +103,8 @@ export function OrdersBoard({ initialOrders, initialAtRisk }: { initialOrders: A
       if (!res.ok) {
         const data = await res.json();
         window.alert(data.error ?? "Could not cancel.");
+        // Cancelled but the refund failed: the order is no longer live.
+        if (data.cancelled) setOrders((prev) => prev.filter((o) => o.id !== id));
         return;
       }
       setOrders((prev) => prev.filter((o) => o.id !== id));

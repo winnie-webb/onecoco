@@ -19,6 +19,9 @@ export interface TrackPayload {
   totalCents: number;
   currency: string;
   cashDue: boolean;
+  refunded: boolean;
+  /** Card payment captured and not (yet) refunded. */
+  charged: boolean;
 }
 
 function hashToken(token: string): string {
@@ -81,6 +84,8 @@ export async function getTrackPayload(token: string): Promise<TrackPayload | nul
     totalCents: order.total_cents,
     currency: order.currency,
     cashDue: order.payment_status === "CASH_DUE",
+    refunded: order.payment_status === "REFUNDED" || order.payment_status === "PARTIALLY_REFUNDED",
+    charged: order.payment_status === "CAPTURED",
   };
 }
 

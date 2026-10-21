@@ -1,6 +1,6 @@
 import { serviceClient } from "@/lib/db/client";
-import { getProvider } from "@/lib/payments";
-import { assertFulfillmentTransition, assertPaymentTransition } from "@/lib/orders/state";
+import { assertFulfillmentTransition } from "@/lib/orders/state";
+import { refundOrderInFull, type RefundResult } from "@/lib/payments/refund";
 
 export class CancelError extends Error {
   constructor(
@@ -19,12 +19,12 @@ export class CancelError extends Error {
  * full; a cash order that hasn't been collected yet just cancels, since
  * there's nothing to give back.
  */
-export async function cancelOrderAsOps(orderId: string, reason: string, actorUserId: string): Promise<void> {
+export async function cancelOrderAsOps(orderId: string, reason: string, actorUserId: string): Promise<RefundResult> {
   const db = serviceClient();
 
   const { data: order, error: orderError } = await db
     .from("orders")
-    .select("id, fulfillment_status, payment_status, amount_captured_cents, currency")
+    .select("id, fulfillment_status")
     .eq("id", orderId)
     .single();
   if (orderError || !order) throw new CancelError("order not found", "NOT_FOUND");
@@ -38,37 +38,8 @@ export async function cancelOrderAsOps(orderId: string, reason: string, actorUse
     .eq("fulfillment_status", order.fulfillment_status);
   if (updateError) throw new CancelError(`could not cancel order: ${updateError.message}`, "INTERNAL");
 
-  if (order.payment_status === "CAPTURED" && order.amount_captured_cents > 0) {
-    const { data: payment } = await db
-      .from("payments")
-      .select("id, provider, provider_capture_id")
-      .eq("order_id", orderId)
-      .eq("status", "CAPTURED")
-      .maybeSingle();
+  // Uncollected cash: nothing to give back, but the debt is gone too.
+  await db.from("orders").update({ payment_status: "VOIDED" }).eq("id", orderId).eq("payment_status", "CASH_DUE");
 
-    if (payment?.provider_capture_id) {
-      const provider = await getProvider(payment.provider);
-      const outcome = await provider.refund({
-        providerCaptureId: payment.provider_capture_id,
-        amountCents: order.amount_captured_cents,
-        currency: order.currency,
-        reason: `order cancelled by ops: ${reason}`,
-      });
-
-      if (outcome.status === "SUCCEEDED") {
-        await db.from("refunds").insert({
-          payment_id: payment.id,
-          provider_refund_id: outcome.providerRefundId,
-          amount_cents: order.amount_captured_cents,
-          reason,
-          actor_user_id: actorUserId,
-          status: "SUCCEEDED",
-        });
-        // amount_refunded_cents is kept in step by the sync_order_refund_total
-        // trigger (0004_payments.sql) — not set here.
-        assertPaymentTransition("CAPTURED", "REFUNDED");
-        await db.from("orders").update({ payment_status: "REFUNDED" }).eq("id", orderId).eq("payment_status", "CAPTURED");
-      }
-    }
-  }
+  return refundOrderInFull(orderId, `order cancelled by ops: ${reason}`, actorUserId);
 }

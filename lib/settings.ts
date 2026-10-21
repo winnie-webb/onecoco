@@ -16,6 +16,8 @@ export interface Settings {
   zoneBufferMetres: number;
   accuracyThresholdM: number;
   trackTokenTtlHours: number;
+  expiryGraceMinutes: number;
+  unpaidAbandonMinutes: number;
 }
 
 const KEYS = {
@@ -28,6 +30,8 @@ const KEYS = {
   zone_buffer_metres: "zoneBufferMetres",
   accuracy_threshold_m: "accuracyThresholdM",
   track_token_ttl_hours: "trackTokenTtlHours",
+  expiry_grace_minutes: "expiryGraceMinutes",
+  unpaid_abandon_minutes: "unpaidAbandonMinutes",
 } as const satisfies Record<string, keyof Settings>;
 
 // Deliberately conservative defaults if a key is somehow missing from the
@@ -42,6 +46,8 @@ const DEFAULTS: Settings = {
   zoneBufferMetres: 75,
   accuracyThresholdM: 100,
   trackTokenTtlHours: 24,
+  expiryGraceMinutes: 4,
+  unpaidAbandonMinutes: 30,
 };
 
 export async function getSettings(): Promise<Settings> {

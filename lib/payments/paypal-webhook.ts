@@ -37,6 +37,7 @@ async function verifySignature(rawBody: string, headers: PayPalWebhookHeaders): 
       "Content-Type": "application/x-www-form-urlencoded",
     },
     body: "grant_type=client_credentials",
+    signal: AbortSignal.timeout(10_000),
   });
   if (!tokenRes.ok) return false;
   const { access_token } = (await tokenRes.json()) as { access_token: string };
@@ -53,6 +54,7 @@ async function verifySignature(rawBody: string, headers: PayPalWebhookHeaders): 
       webhook_id: webhookId,
       webhook_event: JSON.parse(rawBody),
     }),
+    signal: AbortSignal.timeout(10_000),
   });
   if (!verifyRes.ok) return false;
   const { verification_status } = (await verifyRes.json()) as { verification_status: string };

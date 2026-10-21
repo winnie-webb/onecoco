@@ -14,5 +14,5 @@ export const FULFILLMENT_COPY: Record<FulfillmentStatus, string> = {
   DELIVERED: "Delivered",
   UNDELIVERABLE: "We couldn't find you",
   CANCELLED: "Cancelled",
-  EXPIRED: "Expired",
+  EXPIRED: "We couldn't find a runner",
 };

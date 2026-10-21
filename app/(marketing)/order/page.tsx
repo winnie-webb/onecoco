@@ -3,6 +3,7 @@ import { Section, Eyebrow } from "@/components/ui/Section";
 import { LocationGate } from "@/components/order/LocationGate";
 import { brand } from "@/lib/brand";
 import { getFullCatalogue } from "@/lib/db/queries/catalogue";
+import { cardProvider } from "@/lib/payments/availability";
 
 export const metadata: Metadata = {
   title: brand.cta,
@@ -37,7 +38,7 @@ export default async function Page({ searchParams }: { searchParams: Promise<{ q
         </h1>
       </div>
       <div className="mt-9">
-        <LocationGate products={products} qrCode={qr} />
+        <LocationGate products={products} qrCode={qr} cardProvider={cardProvider()} />
       </div>
     </Section>
   );

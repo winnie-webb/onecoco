@@ -1446,6 +1446,24 @@ export type Database = {
           },
         ];
       };
+      rate_limit_hits: {
+        Row: {
+          hits: number;
+          key: string;
+          window_start: string;
+        };
+        Insert: {
+          hits?: number;
+          key: string;
+          window_start: string;
+        };
+        Update: {
+          hits?: number;
+          key?: string;
+          window_start?: string;
+        };
+        Relationships: [];
+      };
       refunds: {
         Row: {
           actor_user_id: string | null;
@@ -1945,6 +1963,11 @@ export type Database = {
         Returns: number;
       };
       promote_scheduled_orders: { Args: Record<PropertyKey, never>; Returns: string[] };
+      prune_rate_limits: { Args: Record<PropertyKey, never>; Returns: number };
+      rate_limit_hit: {
+        Args: { p_key: string; p_limit: number; p_window_seconds: number };
+        Returns: boolean;
+      };
       runner_distance_to_point: {
         Args: { p_lat: number; p_lng: number; p_max_age_s?: number; p_runner_id: string };
         Returns: number;

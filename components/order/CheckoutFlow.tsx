@@ -7,6 +7,8 @@ import { ProductPicker } from "@/components/order/ProductPicker";
 import { track } from "@/lib/analytics/events";
 import type { CatalogueProductWithCustomizations } from "@/lib/db/queries/catalogue";
 import type { CartItem } from "@/lib/pricing/cart-types";
+import type { CardProvider } from "@/lib/payments/availability";
+import { PAYPAL_PENDING_KEY } from "@/components/order/paypal-pending";
 
 interface QuoteResponse {
   quoteId: string;
@@ -31,12 +33,14 @@ export function CheckoutFlow({
   lng,
   accuracyM,
   qrCode,
+  cardProvider,
 }: {
   products: CatalogueProductWithCustomizations[];
   lat: number;
   lng: number;
   accuracyM: number | null;
   qrCode?: string;
+  cardProvider: CardProvider | null;
 }) {
   const router = useRouter();
   const [step, setStep] = useState<Step>("picking");
@@ -48,7 +52,7 @@ export function CheckoutFlow({
   const [email, setEmail] = useState("");
   const [landmarkText, setLandmarkText] = useState("");
   const [customerDescription, setCustomerDescription] = useState("");
-  const [paymentProvider, setPaymentProvider] = useState<"mock" | "cash">("mock");
+  const [paymentProvider, setPaymentProvider] = useState<CardProvider | "cash">(cardProvider ?? "cash");
 
   async function requestQuote(item: CartItem) {
     setError(null);
@@ -101,16 +105,37 @@ export function CheckoutFlow({
         return;
       }
 
-      if (paymentProvider === "mock") {
+      if (paymentProvider !== "cash") {
         const startRes = await fetch("/api/v1/payments/start", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ orderId: order.orderId, provider: "mock" }),
+          body: JSON.stringify({ orderId: order.orderId, provider: paymentProvider }),
         });
         const started = await startRes.json();
         if (!startRes.ok) {
           setError(started.error ?? "Could not start payment.");
           setStep("checkout");
+          return;
+        }
+
+        if (paymentProvider === "paypal") {
+          if (!started.redirectUrl) {
+            setError("Could not reach PayPal. Try again, or pay cash on delivery.");
+            setStep("checkout");
+            return;
+          }
+          // Leaving the site. The return page finishes the capture and
+          // needs the track token to land the customer on their order; if
+          // this storage is lost the order email still carries the link.
+          try {
+            sessionStorage.setItem(
+              PAYPAL_PENDING_KEY,
+              JSON.stringify({ paymentId: started.paymentId, providerRef: started.providerRef, trackToken: order.trackToken }),
+            );
+          } catch {
+            // Private mode etc. — the return page falls back to PayPal's token.
+          }
+          window.location.assign(started.redirectUrl);
           return;
         }
 
@@ -125,7 +150,7 @@ export function CheckoutFlow({
           setStep("checkout");
           return;
         }
-        track("payment_succeeded");
+        track("payment_succeeded", { provider: paymentProvider });
       }
 
       router.push(`/confirm/${order.trackToken}`);
@@ -220,17 +245,21 @@ export function CheckoutFlow({
         <fieldset>
           <legend className="mb-2 text-sm font-bold uppercase tracking-wide text-ink-soft">Pay with</legend>
           <div className="flex gap-2">
+            {cardProvider && (
+              <button
+                type="button"
+                aria-pressed={paymentProvider === cardProvider}
+                onClick={() => setPaymentProvider(cardProvider)}
+                className={`flex-1 rounded-full border-2 px-4 py-3 text-sm font-semibold ${
+                  paymentProvider === cardProvider ? "border-jungle-800 bg-jungle-800 text-sand-50" : "border-sand-200"
+                }`}
+              >
+                {cardProvider === "paypal" ? "Card or PayPal" : "Card (test mode)"}
+              </button>
+            )}
             <button
               type="button"
-              onClick={() => setPaymentProvider("mock")}
-              className={`flex-1 rounded-full border-2 px-4 py-3 text-sm font-semibold ${
-                paymentProvider === "mock" ? "border-jungle-800 bg-jungle-800 text-sand-50" : "border-sand-200"
-              }`}
-            >
-              Card (test mode)
-            </button>
-            <button
-              type="button"
+              aria-pressed={paymentProvider === "cash"}
               onClick={() => setPaymentProvider("cash")}
               className={`flex-1 rounded-full border-2 px-4 py-3 text-sm font-semibold ${
                 paymentProvider === "cash" ? "border-jungle-800 bg-jungle-800 text-sand-50" : "border-sand-200"
@@ -241,14 +270,39 @@ export function CheckoutFlow({
           </div>
           {paymentProvider === "mock" && (
             <p className="mt-2 text-xs text-ink-soft">
-              Real payments aren&rsquo;t live yet — this uses a test provider that always succeeds, so the rest of the
-              flow can be built and proven end to end.
+              Test mode: this uses a test provider that always succeeds. It is never offered in production.
+            </p>
+          )}
+          {paymentProvider === "paypal" && (
+            <p className="mt-2 text-xs text-ink-soft">
+              You&rsquo;ll pay on PayPal&rsquo;s secure page — no PayPal account needed to pay by card — then come
+              straight back here.
             </p>
           )}
         </fieldset>
 
+        <p className="text-xs text-ink-soft">
+          By placing this order you agree to our{" "}
+          <a href="/terms" target="_blank" className="font-semibold underline">
+            terms
+          </a>{" "}
+          and{" "}
+          <a href="/refunds" target="_blank" className="font-semibold underline">
+            refund policy
+          </a>
+          . We use your details only to deliver this order —{" "}
+          <a href="/privacy" target="_blank" className="font-semibold underline">
+            privacy
+          </a>
+          .
+        </p>
+
         <Button type="submit" size="lg" disabled={step === "paying"} className="mt-2 w-full">
-          {step === "paying" ? "Placing your order…" : `Pay ${money(quote.totalCents, quote.currency)}`}
+          {step === "paying"
+            ? "Placing your order…"
+            : paymentProvider === "cash"
+              ? `Place order — ${money(quote.totalCents, quote.currency)} cash`
+              : `Pay ${money(quote.totalCents, quote.currency)}`}
         </Button>
       </form>
     </div>

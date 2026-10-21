@@ -188,5 +188,11 @@ INSERT INTO settings (key, value) VALUES
   ('zone_buffer_metres',    '75'::jsonb),
   -- Above this accuracy we refuse to guess a zone and ask the customer.
   ('accuracy_threshold_m',  '100'::jsonb),
-  ('track_token_ttl_hours', '24'::jsonb)
+  ('track_token_ttl_hours', '24'::jsonb),
+  -- Minutes past accept_deadline_at before an unaccepted order is EXPIRED
+  -- and refunded (lib/orders/expire.ts). Ops see it on the at-risk board
+  -- at the deadline; this is their window to find a runner by phone.
+  ('expiry_grace_minutes',  '4'::jsonb),
+  -- A card order still UNPAID this long after placing is abandoned checkout.
+  ('unpaid_abandon_minutes', '30'::jsonb)
 ON CONFLICT (key) DO NOTHING;

@@ -1,13 +1,17 @@
 import { serviceClient } from "@/lib/db/client";
 import type { Database } from "@/lib/db/types";
 import { isEmailConfigured, sendEmail } from "@/lib/notifications/email";
-import { orderConfirmationEmail, paymentConfirmationEmail } from "@/lib/notifications/templates/order";
+import { orderConfirmationEmail, orderDeliveredEmail, orderExpiredEmail, paymentConfirmationEmail } from "@/lib/notifications/templates/order";
 
 type NotificationChannel = Database["public"]["Enums"]["notification_channel"];
 
 const TEMPLATES: Record<string, (data: Record<string, unknown>) => { subject: string; html: string }> = {
-  order_confirmation: (data) => orderConfirmationEmail({ orderNumber: data.orderNumber as number, totalCents: data.totalCents as number }),
+  order_confirmation: (data) =>
+    orderConfirmationEmail({ orderNumber: data.orderNumber as number, totalCents: data.totalCents as number, trackUrl: data.trackUrl as string | undefined }),
   payment_confirmation: (data) => paymentConfirmationEmail({ orderNumber: data.orderNumber as number }),
+  order_delivered: (data) => orderDeliveredEmail({ orderNumber: data.orderNumber as number, totalCents: data.totalCents as number }),
+  order_expired: (data) =>
+    orderExpiredEmail({ orderNumber: data.orderNumber as number, refunded: Boolean(data.refunded), wasCard: Boolean(data.wasCard) }),
 };
 
 /**

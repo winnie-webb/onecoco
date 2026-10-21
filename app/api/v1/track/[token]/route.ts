@@ -12,7 +12,7 @@ export const dynamic = "force-dynamic";
 export async function GET(request: Request, context: { params: Promise<{ token: string }> }) {
   const { token } = await context.params;
 
-  if (isRateLimited(`track:${clientIp(request)}`, 30, 60_000)) {
+  if (await isRateLimited(`track:${clientIp(request)}`, 30, 60_000)) {
     return NextResponse.json({ error: "too many requests" }, { status: 429 });
   }
 

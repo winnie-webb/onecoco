@@ -43,6 +43,20 @@ export async function POST(request: Request) {
 
     const started = await provider.start({ orderId: order.id, amountCents: order.total_cents, currency: order.currency });
 
+    // A retried start (back button, double tap) gets the same PayPal order
+    // back — PayPal-Request-Id is our order id — so reuse its payment row
+    // rather than recording a second one with the same provider_ref.
+    const { data: existing } = await db
+      .from("payments")
+      .select("id")
+      .eq("order_id", order.id)
+      .eq("provider", provider.name as "mock" | "cash" | "paypal" | "stripe")
+      .eq("provider_ref", started.providerRef)
+      .maybeSingle();
+    if (existing) {
+      return NextResponse.json({ paymentId: existing.id, providerRef: started.providerRef, redirectUrl: started.redirectUrl ?? null });
+    }
+
     const { data: payment, error: paymentError } = await db
       .from("payments")
       .insert({
