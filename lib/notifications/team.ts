@@ -146,7 +146,9 @@ export async function notifyTeamOfNewOrder(orderId: string): Promise<void> {
         }),
       );
     }
-    await Promise.allSettled(sends);
+    for (const result of await Promise.allSettled(sends)) {
+      if (result.status === "rejected") console.error(`[team alert] order #${order.orderNumber} not delivered:`, result.reason);
+    }
   } catch (err) {
     console.error("[team alert] failed", err);
   }
