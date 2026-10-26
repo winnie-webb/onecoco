@@ -12,22 +12,42 @@ Montego Bay, Jamaica.
 | Path | What |
 |---|---|
 | `docs/ARCHITECTURE.md` | **Read this first.** Phase 0 — architecture, schema, flows, roadmap, risks, open questions. |
-| `PHASE-1-NOTES.md` | Phase 1 close-out: what shipped, what was fixed, known gaps. |
-| `app/` | Next.js App Router. `(marketing)` pages today. |
-| `components/` | `ui/` primitives, `site/` chrome, `marketing/` sections. |
+| `PHASE-1-NOTES.md` … `PHASE-11-NOTES.md` | Phase close-outs: what shipped, what was fixed, known gaps. |
+| `app/(marketing)/` | Public site — landing, `/order` (location → cart → checkout, `?qr=` attribution), `/confirm`, `/track`. Own root layout (Header/Footer). |
+| `app/(admin)/admin/` | Staff tool — login (unguarded) + `(protected)/{orders,analytics,zones,products,runners,map,partners}`. Own root layout, no site chrome. |
+| `app/(runner)/runner/` | Runner PWA — login + `(protected)/{today,offers,order/[id]}`. Own root layout, mobile-first. |
+| `app/(partner)/partner/` | Partner portal — login + `(protected)/{dashboard,qr-codes,group-orders}`. Own root layout, desktop-first (front-desk terminal, not a runner's phone). |
+| `app/api/v1/*` | Route Handlers — customer-facing + `admin/*` / `runner/*` / `partner/*` (staff/partner-only, audited/guarded). |
+| `components/` | `ui/` primitives, `site/` chrome, `marketing/` sections, `order/` (checkout flow), `admin/`, `runner/`, `partner/` (staff/partner UI). |
 | `lib/brand.ts` | The only file containing the brand name. |
-| `supabase/migrations/` | Schema. 7 migrations, applied in filename order. |
-| `supabase/seed/jamaica.sql` | Montego Bay pilot configuration. Idempotent. |
+| `lib/db/` | `client.ts` (service-role, server-only), `server.ts`/`browser.ts` (staff/runner/partner auth, RLS-scoped), generated `types.ts`. |
+| `lib/geo/`, `lib/pricing/`, `lib/settings.ts` | Zone resolution, serviceability gate, ETA, quote. |
+| `lib/orders/` | Order creation/cancellation/runner transitions, the central status-transition maps, tracking, display copy. |
+| `lib/dispatch/offers.ts` | Creates `order_offers` the moment an order becomes dispatchable (§6), gated on `scheduled_for` for group orders (§9). |
+| `lib/payments/` | `PaymentProvider` interface + `mock`/`cash`/`paypal` (unverified live, see `PHASE-5-NOTES.md`) providers, the four-check capture verifier. |
+| `lib/growth/qr.ts` | QR code attribution resolution (§2/§9) — one table, one URL parameter, silently ignored if unresolvable. |
+| `lib/auth/` | Staff + runner + partner role/session guards (Server Components and Route Handlers). |
+| `lib/analytics/events.ts` | Funnel events — no-ops until `NEXT_PUBLIC_POSTHOG_KEY` is set. |
+| `lib/analytics/admin-summary.ts` | `/admin/analytics`'s real operational metrics (revenue, on-time rate, accept latency, cancellations) — computed from `orders`/`order_assignments`, not PostHog. |
+| `lib/security/rate-limit.ts` | In-memory sliding-window rate limiter (§16) — `/orders`, `/quote`, `/demand`, `/track`. Single-instance only; swap for Redis before a multi-instance deploy. |
+| `lib/notifications/` | Email (Resend, unverified live) + console-sink fallback, templates. |
+| `proxy.ts` | Refreshes the staff/runner/partner auth session cookie on `/admin/*`, `/runner/*`, `/partner/*` (this Next.js version's renamed `middleware.ts`). |
+| `app/api/v1/system/sweep/route.ts` | Scheduled sweep (`vercel.json`'s cron, `Bearer $CRON_SECRET`) — promotes scheduled group orders past due, truncates stale exact locations to zone level (§17). |
+| `supabase/migrations/` | Schema. 22 migrations, applied in filename order. |
+| `supabase/seed/jamaica.sql` | Montego Bay configuration — Harmony Beach Park (pilot, `OPEN`, 50 coconuts); Doctor's Cave and Walter Fletcher seeded `CLOSED`. Idempotent. |
 
 ## Running it
 
 ```
 npm install
+npx supabase start      # local Postgres + PostGIS in Docker
+PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supabase/seed/jamaica.sql
 npm run dev
 ```
 
-No environment variables are required for the marketing site. Copy
-`.env.example` to `.env.local` when you need to point at a database.
+Copy `.env.example` to `.env.local` and fill in the `NEXT_PUBLIC_SUPABASE_*` /
+`SUPABASE_SERVICE_ROLE_KEY` values `npx supabase status` prints (only
+`NEXT_PUBLIC_SITE_URL` is required for the marketing-only pages).
 
 Port 3000 is often taken on the original dev machine, so `.claude/launch.json`
 uses 3100. `npm run dev` on its own uses 3000 as normal.
@@ -38,32 +58,79 @@ uses 3100. `npm run dev` on its own uses 3000 as normal.
 |---|---|
 | 0 — Architecture | Done. `docs/ARCHITECTURE.md`. |
 | 1 — Brand + landing | Done, verified at 375px and 1280px. |
-| 2 — Schema, zones, catalogue | **Migrations written, NOT YET APPLIED to any database.** |
-| 3+ | Not started. See the roadmap in `docs/ARCHITECTURE.md`. |
+| 2 — Schema, zones, catalogue | Done. Migrations applied + constraint-verified against a real local database; zone/serviceability resolution and location capture live at `/order`. `PHASE-2-NOTES.md`. |
+| 3 — Cart, checkout, tracking | Done. Real quote/order/mock-payment/tracking flow, proven end to end in a real browser. `PHASE-3-NOTES.md`. |
+| 4 — Admin | Done. Staff auth, live order board (Realtime) + at-risk view, zone pause, products, runners. `PHASE-4-NOTES.md`. |
+| 5 — Real payments, email | Code done, unverified live. PayPal + Resend written to spec with pure logic unit tested (`npm test`); this sandbox has neither account nor network egress to either host. `PHASE-5-NOTES.md`. |
+| 6 — Runner PWA | Done. Login, shift, Realtime offers, race-safe accept, pickup/arriving/delivered/undeliverable, cash settlement. Proven end to end; found and fixed a real cross-phase RLS bug along the way. `PHASE-6-NOTES.md`. |
+| 7 — Runner GPS + live map | Done, schematic map. GPS during active delivery only (§17), proximity on offers, admin live view. No map-tile host (Mapbox/OSM/unpkg) reachable from this sandbox — verified, not assumed — so positions render on a plain SVG radar instead of real tiles. Found and fixed two more cross-phase RLS/serialization bugs. `PHASE-7-NOTES.md`. |
+| 8 — Build Your Coco | Done. Real, live SVG preview wired into the actual `/order` picker (not a separate demo) plus an interactive marketing playground at `/build-your-coco`. `PHASE-8-NOTES.md`. |
+| 9 — Partners, QR attribution, group orders | Done. Admin partner management + invite; partner portal (dashboard, printable QR codes, group/scheduled orders); QR-attributed checkout; commission calculation. Found and fixed a fourth cross-phase RLS gap (`partner_users`) and a scheduled-order dispatch-gating bug, both before/via live end-to-end testing. `PHASE-9-NOTES.md`. |
+| 10 — Analytics + pilot hardening | Done for everything not gated on §27.1 (pilot beach + permission, still open, still blocking an actual launch). Real operational dashboard at `/admin/analytics`; rate limiting closed on `/orders`/`/quote`/`/demand` (only `/track` had it before); a scheduled sweep promotes overdue group orders and truncates stale exact locations to zone level (§17) — both gaps named as "Phase 10" in earlier notes. `PHASE-10-NOTES.md`. |
+| 11 — Multi-beach expansion | **Done.** Added a real second beach (Walter Fletcher Beach) as a pure seed INSERT, proving §25's "config only, no rewrite" claim rather than just asserting it — placed real orders at both beaches and confirmed dispatch never crosses beach lines. Found and fixed the one real single-beach hardcode (`/admin/map`, now a beach switcher). `PHASE-11-NOTES.md`. |
+| Pilot — Harmony Beach Park | **Ready to deploy.** Pilot beach open with 50 coconuts, real stock counting, new-order alerts to the team, maps/call links, longer accept window, no-GPS ordering, personalisation paused. `PILOT-LAUNCH.md`. |
 
-### Picking up Phase 2 on another machine
+**Roadmap complete (Phases 2–11)** to the extent each doesn't depend on a human-only decision still open — see §27 in `docs/ARCHITECTURE.md`, most centrally §27.1 (which beach, and is permission secured), named by multiple phases' notes as the one blocker no amount of further engineering resolves.
 
-The migrations have never been run. They are unverified SQL until they are.
+### Local database
 
 ```
-npx supabase login
-npx supabase link --project-ref <your-project-ref>
-npx supabase db push
+npx supabase start
+npx supabase status     # prints the URL + keys for .env.local
+PGPASSWORD=postgres psql -h 127.0.0.1 -p 54322 -U postgres -d postgres -f supabase/seed/jamaica.sql
 ```
 
-Then run `supabase/seed/jamaica.sql` against the project.
-
-Things to check the first time they run, because they are the parts most
-likely to bite:
+Things worth knowing:
 
 - PostGIS resolves — the migrations install it into the `extensions` schema and
   set `search_path` accordingly.
 - `auth.users` exists (it does on Supabase; `app_users` references it).
 - The seed leaves the delivery zone **`CLOSED`** on purpose. Its polygon is a
   placeholder rectangle, not a surveyed boundary, and there is no confirmed
-  vending permission for the beach yet.
+  vending permission for the beach yet — so `/order` will honestly report
+  "not open right now" for any real location on the pilot beach until that
+  changes.
 - Tax is seeded at **0**, deliberately — a wrong non-zero rate silently
   overcharges every customer.
+- **No production Supabase project is linked yet.** `npx supabase link
+  --project-ref <ref> && npx supabase db push` against a real project,
+  then re-run the seed, is still pending an account (§27.1 also gates
+  whether the seed's zone should ever actually open).
+
+### Creating a local admin account
+
+`/admin` needs a staff account, and deliberately isn't seeded with one (a
+hardcoded admin password in committed SQL is exactly the kind of default
+credential that gets forgotten and shipped to production). Create one
+against your local Supabase instance:
+
+```
+curl -s -X POST http://127.0.0.1:54321/auth/v1/admin/users \
+  -H "apikey: <SERVICE_ROLE_KEY>" -H "Authorization: Bearer <SERVICE_ROLE_KEY>" \
+  -H "Content-Type: application/json" \
+  -d '{"email":"admin@example.com","password":"<choose one>","email_confirm":true}'
+```
+
+Then give the returned user's `id` the `ADMIN` role:
+
+```sql
+INSERT INTO app_users (id, email, display_name, role, active)
+VALUES ('<id from above>', 'admin@example.com', 'Local Admin', 'ADMIN', true);
+```
+
+### Creating a local runner account
+
+Same idea, `role: 'RUNNER'`, plus a `runners` row (the admin `/admin/runners`
+page does all of this for you against a real signed-in admin session — this
+manual path is only for when you need one before an admin account exists):
+
+```sql
+INSERT INTO app_users (id, email, display_name, role, active)
+VALUES ('<id from the admin API call above>', 'runner1@example.com', 'Local Runner', 'RUNNER', true);
+
+INSERT INTO runners (user_id, name, phone, home_beach_id, active)
+SELECT '<same id>', 'Local Runner', '+1', b.id, true FROM beaches b WHERE b.slug = 'doctors-cave-beach';
+```
 
 ## Conventions
 
@@ -71,3 +138,7 @@ likely to bite:
 - No price is ever a literal in application code.
 - Mobile first. Verify at 375px before desktop.
 - Nothing is described as working until it has been run.
+- `npm test` runs the Vitest suite (pure logic only — order state
+  transitions, PayPal response parsing, email request shaping). Anything
+  that touches the database is verified by hand against a real local
+  Supabase instance instead; see each phase's notes for what was run.

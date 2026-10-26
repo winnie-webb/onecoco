@@ -7,6 +7,13 @@ on:
 jobs:
   check:
     runs-on: ubuntu-latest
+    env:
+      # `next build` prerenders pages that construct a Supabase client, so the
+      # vars must exist. Placeholders only: nothing in the build talks to them.
+      NEXT_PUBLIC_SITE_URL: http://localhost:3000
+      NEXT_PUBLIC_SUPABASE_URL: http://127.0.0.1:54321
+      NEXT_PUBLIC_SUPABASE_ANON_KEY: ci-placeholder
+      SUPABASE_SERVICE_ROLE_KEY: ci-placeholder
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
@@ -14,9 +21,9 @@ jobs:
           node-version: 22
           cache: npm
       - run: npm ci
+      # T-3: production dependencies must stay clear of high/critical advisories.
+      - run: npm audit --omit=dev --audit-level=high
       - run: npx tsc --noEmit
       - run: npm run lint
       - run: npm test
       - run: npm run build
-      # Build Your Coco speed budget: fails if the 3D or builder JS grows past it.
-      - run: npm run check:size

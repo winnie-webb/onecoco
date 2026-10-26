@@ -8,7 +8,6 @@ const columns = [
     title: "Order",
     links: [
       { href: "/order", label: brand.cta },
-      { href: "/build-your-coco", label: "Build Your Coco" },
       { href: "/how-it-works", label: "How It Works" },
     ],
   },
@@ -20,13 +19,22 @@ const columns = [
       { href: "/partners#runners", label: "Become a Runner" },
     ],
   },
+  {
+    title: "Help",
+    links: [
+      { href: "/contact", label: "Contact" },
+      { href: "/refunds", label: "Refunds" },
+      { href: "/privacy", label: "Privacy" },
+      { href: "/terms", label: "Terms" },
+    ],
+  },
 ];
 
 export function Footer() {
   return (
-    <footer className="bg-jungle-900 text-sand-100 print:hidden">
+    <footer className="bg-jungle-900 text-sand-100">
       <Container>
-        <div className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-4">
+        <div className="grid gap-10 py-14 sm:grid-cols-2 lg:grid-cols-5">
           <div className="lg:col-span-2">
             <Wordmark tone="light" />
             <p className="mt-4 max-w-xs text-pretty text-sand-300">

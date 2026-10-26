@@ -1,0 +1,8 @@
+[
+  { "name": "EXAMPLE — Doctor's Cave centre (placeholder polygon)", "lat": 18.4953, "lng": -77.921, "expect": "covered" },
+  { "name": "EXAMPLE — Doctor's Cave near south edge", "lat": 18.4947, "lng": -77.9200, "expect": "covered" },
+  { "name": "EXAMPLE — 30 m north of the zone", "lat": 18.4965, "lng": -77.921, "expect": "borderline" },
+  { "name": "EXAMPLE — 40 m west of the zone", "lat": 18.4953, "lng": -77.9229, "expect": "borderline" },
+  { "name": "EXAMPLE — Gloucester Ave, well outside", "lat": 18.499, "lng": -77.921, "expect": "none" },
+  { "name": "EXAMPLE — out to sea", "lat": 18.4953, "lng": -77.93, "expect": "none" }
+]

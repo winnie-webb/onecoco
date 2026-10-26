@@ -7,7 +7,6 @@ import { Container } from "@/components/ui/Container";
 const nav = [
   { href: "/#cocos", label: "Cocos" },
   { href: "/how-it-works", label: "How It Works" },
-  { href: "/build-your-coco", label: "Build Your Coco" },
   { href: "/partners", label: "Partners" },
 ];
 
@@ -18,7 +17,7 @@ const nav = [
  */
 export function Header() {
   return (
-    <header className="sticky top-0 z-40 print:hidden border-b border-sand-200 bg-sand-50/90 backdrop-blur-md">
+    <header className="sticky top-0 z-40 border-b border-sand-200 bg-sand-50/90 backdrop-blur-md">
       <Container>
         <div className="flex h-16 items-center justify-between gap-4">
           <Wordmark />

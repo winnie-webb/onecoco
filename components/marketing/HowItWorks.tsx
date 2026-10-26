@@ -10,7 +10,7 @@ export const steps = [
   {
     n: "02",
     title: "Pick your coco",
-    body: "Classic, or build one with a name and a message on it. Add a lime, a spoon, an extra straw.",
+    body: "One coconut or two. Cut fresh to order, with a straw.",
   },
   {
     n: "03",
