@@ -872,6 +872,7 @@ export type Database = {
           qr_code_id: string | null;
           quote_id: string | null;
           scheduled_for: string | null;
+          stock_reserved: boolean;
           subtotal_cents: number;
           tax_cents: number;
           tip_cents: number;
@@ -925,6 +926,7 @@ export type Database = {
           qr_code_id?: string | null;
           quote_id?: string | null;
           scheduled_for?: string | null;
+          stock_reserved?: boolean;
           subtotal_cents?: number;
           tax_cents?: number;
           tip_cents?: number;
@@ -978,6 +980,7 @@ export type Database = {
           qr_code_id?: string | null;
           quote_id?: string | null;
           scheduled_for?: string | null;
+          stock_reserved?: boolean;
           subtotal_cents?: number;
           tax_cents?: number;
           tip_cents?: number;
@@ -1324,6 +1327,8 @@ export type Database = {
           sku: string;
           slug: string;
           sort_order: number;
+          stock_sku: string | null;
+          stock_units: number;
         };
         Insert: {
           active?: boolean;
@@ -1337,6 +1342,8 @@ export type Database = {
           sku: string;
           slug: string;
           sort_order?: number;
+          stock_sku?: string | null;
+          stock_units?: number;
         };
         Update: {
           active?: boolean;
@@ -1350,8 +1357,18 @@ export type Database = {
           sku?: string;
           slug?: string;
           sort_order?: number;
+          stock_sku?: string | null;
+          stock_units?: number;
         };
-        Relationships: [];
+        Relationships: [
+          {
+            foreignKeyName: "products_stock_sku_fkey";
+            columns: ["stock_sku"];
+            isOneToOne: false;
+            referencedRelation: "products";
+            referencedColumns: ["sku"];
+          },
+        ];
       };
       qr_codes: {
         Row: {
@@ -1962,12 +1979,18 @@ export type Database = {
         Args: { p_beach_id: string; p_lat: number; p_lng: number };
         Returns: number;
       };
+      order_latest_lnglat: {
+        Args: { p_order_id: string };
+        Returns: { accuracy_m: number; lat: number; lng: number }[];
+      };
       promote_scheduled_orders: { Args: Record<PropertyKey, never>; Returns: string[] };
       prune_rate_limits: { Args: Record<PropertyKey, never>; Returns: number };
       rate_limit_hit: {
         Args: { p_key: string; p_limit: number; p_window_seconds: number };
         Returns: boolean;
       };
+      release_order_stock: { Args: { p_order_id: string }; Returns: boolean };
+      reserve_order_stock: { Args: { p_order_id: string }; Returns: boolean };
       runner_distance_to_point: {
         Args: { p_lat: number; p_lng: number; p_max_age_s?: number; p_runner_id: string };
         Returns: number;

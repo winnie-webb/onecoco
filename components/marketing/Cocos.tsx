@@ -25,14 +25,14 @@ export function Cocos() {
       <div className="max-w-2xl">
         <Eyebrow>The menu</Eyebrow>
         <h2 className="font-display text-3xl font-extrabold text-jungle-900 sm:text-5xl">
-          Three ways to have one.
+          Two ways to have one.
         </h2>
         <p className="mt-4 text-pretty text-lg text-ink-soft">
           Every coco is cut to order. Nothing sits around waiting for you.
         </p>
       </div>
 
-      <ul className="mt-12 grid gap-6 md:grid-cols-3">
+      <ul className="mt-12 grid gap-6 md:grid-cols-2 md:max-w-3xl">
         {menuPreview.map((item) => (
           <li
             key={item.slug}
@@ -44,7 +44,7 @@ export function Cocos() {
           >
             {item.featured && (
               <span className="absolute -top-3 left-7 rounded-full bg-lime-500 px-3 py-1 text-xs font-bold uppercase tracking-wider text-jungle-900">
-                Most ordered
+                The classic
               </span>
             )}
 

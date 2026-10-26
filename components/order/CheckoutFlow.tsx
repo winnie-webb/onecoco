@@ -32,6 +32,7 @@ export function CheckoutFlow({
   lat,
   lng,
   accuracyM,
+  manualLocation = false,
   qrCode,
   cardProvider,
 }: {
@@ -39,6 +40,9 @@ export function CheckoutFlow({
   lat: number;
   lng: number;
   accuracyM: number | null;
+  /** lat/lng is the beach centre, not the customer — don't store it as
+   * their location, and make the landmark field required instead. */
+  manualLocation?: boolean;
   qrCode?: string;
   cardProvider: CardProvider | null;
 }) {
@@ -93,7 +97,7 @@ export function CheckoutFlow({
           contact: { name, phone, email },
           landmarkText: landmarkText || undefined,
           customerDescription: customerDescription || undefined,
-          location: { lat, lng, accuracyM: accuracyM ?? undefined },
+          location: manualLocation ? undefined : { lat, lng, accuracyM: accuracyM ?? undefined },
           paymentProvider,
           qrCode,
         }),
@@ -227,8 +231,15 @@ export function CheckoutFlow({
             className="min-h-11 w-full rounded-full border-2 border-sand-200 px-4 text-base"
           />
         </Field>
-        <Field label="Landmark (e.g. blue umbrella near the jerk stand)">
+        <Field
+          label={
+            manualLocation
+              ? "Where are you? (e.g. by the lifeguard tower, blue umbrella) *"
+              : "Landmark (e.g. blue umbrella near the jerk stand)"
+          }
+        >
           <input
+            required={manualLocation}
             value={landmarkText}
             onChange={(e) => setLandmarkText(e.target.value)}
             className="min-h-11 w-full rounded-full border-2 border-sand-200 px-4 text-base"

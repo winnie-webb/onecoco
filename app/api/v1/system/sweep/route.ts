@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { serviceClient } from "@/lib/db/client";
-import { createOffersForOrder } from "@/lib/dispatch/offers";
+import { dispatchOrder } from "@/lib/dispatch/offers";
+import { getSettings } from "@/lib/settings";
 import { expireStaleOrders } from "@/lib/orders/expire";
 import { alert } from "@/lib/monitoring/alert";
 
@@ -51,8 +52,15 @@ async function sweep(request: Request) {
   }
 
   let offersCreated = 0;
-  for (const orderId of promotedIds ?? []) {
-    offersCreated += await createOffersForOrder(orderId as string);
+  if ((promotedIds ?? []).length > 0) {
+    // The accept window starts now, not when the group order was booked
+    // hours ago — otherwise the expiry below would refund it straight away.
+    const { acceptWindowMinutes } = await getSettings();
+    const deadline = new Date(Date.now() + acceptWindowMinutes * 60_000).toISOString();
+    for (const orderId of promotedIds ?? []) {
+      await db.from("orders").update({ accept_deadline_at: deadline }).eq("id", orderId as string);
+      offersCreated += await dispatchOrder(orderId as string);
+    }
   }
 
   const { data: truncatedCount, error: truncateError } = await db.rpc("truncate_stale_order_locations");

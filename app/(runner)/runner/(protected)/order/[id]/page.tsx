@@ -18,7 +18,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
   // look the same to them.
   const { data: order } = await db
     .from("orders")
-    .select("id, order_number, fulfillment_status, landmark_text, customer_description, contact_phone, total_cents, currency, payment_status, arriving_announced_at")
+    .select("id, order_number, fulfillment_status, landmark_text, customer_description, contact_name, contact_phone, total_cents, currency, payment_status, arriving_announced_at")
     .eq("id", id)
     .single();
 
@@ -30,6 +30,7 @@ export default async function Page({ params }: { params: Promise<{ id: string }>
     fulfillmentStatus: order.fulfillment_status,
     landmarkText: order.landmark_text,
     customerDescription: order.customer_description,
+    contactName: order.contact_name,
     contactPhone: order.contact_phone,
     totalCents: order.total_cents,
     currency: order.currency,

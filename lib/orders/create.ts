@@ -6,7 +6,8 @@ import { computeQuote, type CartItem } from "@/lib/pricing/quote";
 import { getSettings } from "@/lib/settings";
 import { assertFulfillmentTransition, type PaymentStatus } from "@/lib/orders/state";
 import { sendNotification } from "@/lib/notifications/transport";
-import { createOffersForOrder } from "@/lib/dispatch/offers";
+import { dispatchOrder } from "@/lib/dispatch/offers";
+import { reserveOrderStock } from "@/lib/orders/stock";
 import { resolveQrCode } from "@/lib/growth/qr";
 import { siteUrl } from "@/lib/brand";
 
@@ -231,6 +232,14 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
     }
   }
 
+  // Take the coconuts out of stock now, before any money moves, so two
+  // customers can't both pay for the last one. Nothing has been charged
+  // yet, so an order we can't stock is simply removed.
+  if (!(await reserveOrderStock(order.id))) {
+    await db.from("orders").delete().eq("id", order.id);
+    throw new OrderCreationError("not enough coconuts left for this order", "OUT_OF_STOCK");
+  }
+
   if (input.location) {
     await db.from("order_locations").insert({
       order_id: order.id,
@@ -254,7 +263,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
       .update({ fulfillment_status: "AWAITING_RUNNER" })
       .eq("id", order.id)
       .eq("fulfillment_status", "PLACED");
-    await createOffersForOrder(order.id);
+    await dispatchOrder(order.id);
   }
 
   await sendNotification({
@@ -262,7 +271,14 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
     channel: "EMAIL",
     template: "order_confirmation",
     recipient: email,
-    data: { orderNumber: order.order_number, totalCents: fresh.totalCents, trackUrl: `${siteUrl}/track/${trackToken}` },
+    data: {
+      orderNumber: order.order_number,
+      totalCents: fresh.totalCents,
+      trackUrl: `${siteUrl}/track/${trackToken}`,
+      // Card orders get this before PayPal: say so, rather than
+      // "confirmed" for an order that may never be paid.
+      awaitingPayment: !isCash,
+    },
   });
 
   return {

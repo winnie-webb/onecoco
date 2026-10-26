@@ -34,6 +34,14 @@ type ResolveResponse =
 
 type Phase = "idle" | "requesting" | "resolved" | "denied" | "unsupported" | "error";
 
+interface OpenBeach {
+  zone: { id: string; name: string; beachName: string | null; deliveryFeeCents: number };
+  etaMinMinutes: number;
+  etaMaxMinutes: number;
+  lat: number;
+  lng: number;
+}
+
 const REASON_COPY: Record<string, string> = {
   ZONE_CLOSED: "we don't have vending permission at this beach yet",
   ZONE_PAUSED: "delivery here is paused right now",
@@ -54,6 +62,9 @@ export function LocationGate({
   const [phase, setPhase] = useState<Phase>("idle");
   const [result, setResult] = useState<ResolveResponse | null>(null);
   const [coords, setCoords] = useState<{ lat: number; lng: number; accuracyM: number | null } | null>(null);
+  // True when the customer picked their beach by hand because GPS failed:
+  // we have no location for them, so checkout asks where they are instead.
+  const [manual, setManual] = useState(false);
   const [demandEmail, setDemandEmail] = useState("");
   const [demandLabel, setDemandLabel] = useState("");
   const [demandSubmitted, setDemandSubmitted] = useState(false);
@@ -65,7 +76,23 @@ export function LocationGate({
     track("visit", { page: "order" });
   }, []);
 
+  function pickBeachManually(beach: OpenBeach) {
+    track("manual_beach_selected");
+    setCoords({ lat: beach.lat, lng: beach.lng, accuracyM: null });
+    setManual(true);
+    setResult({
+      match: "covered",
+      serviceable: true,
+      lowAccuracy: false,
+      zone: beach.zone,
+      etaMinMinutes: beach.etaMinMinutes,
+      etaMaxMinutes: beach.etaMaxMinutes,
+    });
+    setPhase("resolved");
+  }
+
   function requestLocation() {
+    setManual(false);
     if (!("geolocation" in navigator)) {
       setPhase("unsupported");
       return;
@@ -147,6 +174,7 @@ export function LocationGate({
               "Your browser doesn't support location. Leave your email and roughly where you are instead."}
             {phase === "error" && "Something went wrong checking your spot. Try again, or leave your email below."}
           </p>
+          <ManualBeachPicker onPick={pickBeachManually} />
           <DemandForm
             email={demandEmail}
             setEmail={setDemandEmail}
@@ -172,6 +200,7 @@ export function LocationGate({
                 your email and we&rsquo;ll let you know the moment we launch
                 near you.
               </p>
+              <ManualBeachPicker onPick={pickBeachManually} />
               <div className="mt-6">
                 <DemandForm
                   email={demandEmail}
@@ -200,6 +229,7 @@ export function LocationGate({
               <Button onClick={requestLocation} className="mt-6" variant="outline">
                 Try again
               </Button>
+              <ManualBeachPicker onPick={pickBeachManually} />
             </>
           )}
 
@@ -242,6 +272,7 @@ export function LocationGate({
                   lat={coords.lat}
                   lng={coords.lng}
                   accuracyM={coords.accuracyM}
+                  manualLocation={manual}
                   qrCode={qrCode}
                   cardProvider={cardProvider}
                 />
@@ -256,6 +287,35 @@ export function LocationGate({
           )}
         </div>
       )}
+    </div>
+  );
+}
+
+/** For when GPS can't place the customer: list the beaches open right now
+ * and let them pick one. Renders nothing if none are open. */
+function ManualBeachPicker({ onPick }: { onPick: (beach: OpenBeach) => void }) {
+  const [beaches, setBeaches] = useState<OpenBeach[]>([]);
+
+  useEffect(() => {
+    fetch("/api/v1/zones/open", { cache: "no-store" })
+      .then((res) => (res.ok ? res.json() : { beaches: [] }))
+      .then((data: { beaches: OpenBeach[] }) => setBeaches(data.beaches))
+      .catch(() => {});
+  }, []);
+
+  if (beaches.length === 0) return null;
+
+  return (
+    <div className="my-6 rounded-card border-2 border-jungle-800/30 p-4 text-center">
+      <p className="font-semibold text-jungle-900">On the beach right now?</p>
+      <p className="mt-1 text-sm text-ink-soft">Pick it and tell us where you are — we&rsquo;ll find you.</p>
+      <div className="mt-3 flex flex-col gap-2">
+        {beaches.map((b) => (
+          <Button key={b.zone.id} onClick={() => onPick(b)} variant="outline">
+            I&rsquo;m at {b.zone.beachName ?? b.zone.name}
+          </Button>
+        ))}
+      </div>
     </div>
   );
 }

@@ -70,6 +70,10 @@ else pass("WhatsApp number set");
 if (env.ALERT_WEBHOOK_URL) pass("ALERT_WEBHOOK_URL is set (server errors and failed refunds alert)");
 else fail("ALERT_WEBHOOK_URL is not set — failed refunds and server errors would go unnoticed");
 
+if (env.ORDER_ALERT_WEBHOOK_URL || (env.ORDER_ALERT_EMAILS && env.RESEND_API_KEY && env.RESEND_FROM))
+  pass("New-order alerts are configured (ORDER_ALERT_WEBHOOK_URL / ORDER_ALERT_EMAILS)");
+else fail("No new-order alerts: set ORDER_ALERT_WEBHOOK_URL, or ORDER_ALERT_EMAILS with Resend — otherwise nobody is told about orders");
+
 if (!env.NEXT_PUBLIC_POSTHOG_KEY) warn("NEXT_PUBLIC_POSTHOG_KEY not set — funnel analytics are a no-op");
 
 const legal = fs.readFileSync(new URL("../lib/legal.ts", import.meta.url), "utf8");

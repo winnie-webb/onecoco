@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { browserClient } from "@/lib/db/browser";
 import { FULFILLMENT_COPY } from "@/lib/orders/copy";
 import type { AdminOrderRow, AtRiskRow } from "@/lib/db/queries/admin-orders";
@@ -18,6 +18,40 @@ function money(cents: number, currency: string): string {
   return `${currency === "USD" ? "US$" : currency + " "}${(cents / 100).toFixed(2)}`;
 }
 
+/** Two short beeps. Browsers only allow audio after the page has been
+ * interacted with, hence the "Turn on sound" button. */
+function chime(ctx: AudioContext) {
+  [0, 0.25].forEach((offset) => {
+    const osc = ctx.createOscillator();
+    const gain = ctx.createGain();
+    osc.frequency.value = 880;
+    gain.gain.setValueAtTime(0.2, ctx.currentTime + offset);
+    gain.gain.exponentialRampToValueAtTime(0.001, ctx.currentTime + offset + 0.2);
+    osc.connect(gain).connect(ctx.destination);
+    osc.start(ctx.currentTime + offset);
+    osc.stop(ctx.currentTime + offset + 0.2);
+  });
+}
+
+function OrderContact({ o }: { o: AdminOrderRow }) {
+  return (
+    <>
+      {o.landmarkText && <p className="mt-1 text-sm">Landmark: {o.landmarkText}</p>}
+      {o.customerDescription && <p className="mt-1 text-sm">Look for: {o.customerDescription}</p>}
+      <p className="mt-1 flex flex-wrap gap-x-3 text-sm">
+        {o.contactPhone && (
+          <a href={`tel:${o.contactPhone.replace(/[^\d+]/g, "")}`} className="font-semibold text-jungle-800 underline">
+            {o.contactPhone}
+          </a>
+        )}
+        <a href={`/api/v1/admin/orders/${o.id}/map`} target="_blank" rel="noopener" className="font-semibold text-jungle-800 underline">
+          Map
+        </a>
+      </p>
+    </>
+  );
+}
+
 /** §15: "Live order board (Realtime) with an at_risk view → intervene on
  * stuck orders." Realtime for the order list itself (this is the one
  * authenticated-staff surface §3 reserves it for); the at_risk view is
@@ -28,6 +62,15 @@ export function OrdersBoard({ initialOrders, initialAtRisk }: { initialOrders: A
   const [orders, setOrders] = useState(initialOrders);
   const [atRisk, setAtRisk] = useState(initialAtRisk);
   const [cancelling, setCancelling] = useState<string | null>(null);
+  const audio = useRef<AudioContext | null>(null);
+  const [soundOn, setSoundOn] = useState(false);
+
+  function enableSound() {
+    audio.current = audio.current ?? new AudioContext();
+    void audio.current.resume();
+    chime(audio.current);
+    setSoundOn(true);
+  }
 
   const atRiskById = useMemo(() => new Map(atRisk.map((r) => [r.orderId, r.riskReason])), [atRisk]);
 
@@ -45,12 +88,22 @@ export function OrdersBoard({ initialOrders, initialAtRisk }: { initialOrders: A
             return prev.filter((o) => o.id !== row.id);
           }
 
+          const previous = prev.find((o) => o.id === row.id);
+          // Ring when an order becomes ready to deliver (cash placed, or
+          // card payment captured) — not for unpaid card checkouts.
+          if (row.fulfillment_status === "AWAITING_RUNNER" && previous?.fulfillmentStatus !== "AWAITING_RUNNER" && audio.current) {
+            chime(audio.current);
+          }
+
           const updated: AdminOrderRow = {
             id: row.id as string,
             orderNumber: row.order_number as number,
             fulfillmentStatus: row.fulfillment_status as AdminOrderRow["fulfillmentStatus"],
             paymentStatus: row.payment_status as AdminOrderRow["paymentStatus"],
             contactName: (row.contact_name as string) ?? null,
+            contactPhone: (row.contact_phone as string) ?? null,
+            landmarkText: (row.landmark_text as string) ?? null,
+            customerDescription: (row.customer_description as string) ?? null,
             totalCents: row.total_cents as number,
             currency: row.currency as string,
             placedAt: row.placed_at as string,
@@ -115,7 +168,16 @@ export function OrdersBoard({ initialOrders, initialAtRisk }: { initialOrders: A
 
   return (
     <div>
-      <h1 className="font-display text-2xl font-bold text-jungle-900">Live orders</h1>
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <h1 className="font-display text-2xl font-bold text-jungle-900">Live orders</h1>
+        {soundOn ? (
+          <span className="text-sm text-ink-soft">Sound on — keep this tab open</span>
+        ) : (
+          <button onClick={enableSound} className="min-h-11 rounded-full border-2 border-jungle-800 px-4 text-sm font-semibold text-jungle-800">
+            Turn on sound for new orders
+          </button>
+        )}
+      </div>
 
       {atRisk.length > 0 && (
         <div className="mt-4 rounded-card border-2 border-red-300 bg-red-50 p-4">
@@ -152,6 +214,7 @@ export function OrdersBoard({ initialOrders, initialAtRisk }: { initialOrders: A
             <p className="mt-1 text-sm text-ink-soft">
               {o.contactName ?? "—"} · {o.zoneName ?? "—"}
             </p>
+            <OrderContact o={o} />
             <button
               onClick={() => cancelOrder(o.id)}
               disabled={cancelling === o.id}
@@ -189,7 +252,10 @@ export function OrdersBoard({ initialOrders, initialAtRisk }: { initialOrders: A
                 <td className="px-4 py-3 font-semibold">#{o.orderNumber}</td>
                 <td className="px-4 py-3">{FULFILLMENT_COPY[o.fulfillmentStatus]}</td>
                 <td className="px-4 py-3">{o.paymentStatus}</td>
-                <td className="px-4 py-3">{o.contactName ?? "—"}</td>
+                <td className="px-4 py-3">
+                  {o.contactName ?? "—"}
+                  <OrderContact o={o} />
+                </td>
                 <td className="px-4 py-3">{o.zoneName ?? "—"}</td>
                 <td className="px-4 py-3">{money(o.totalCents, o.currency)}</td>
                 <td className="px-4 py-3">

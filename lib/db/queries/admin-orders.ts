@@ -7,6 +7,9 @@ export interface AdminOrderRow {
   fulfillmentStatus: Database["public"]["Enums"]["fulfillment_status"];
   paymentStatus: Database["public"]["Enums"]["payment_status"];
   contactName: string | null;
+  contactPhone: string | null;
+  landmarkText: string | null;
+  customerDescription: string | null;
   totalCents: number;
   currency: string;
   placedAt: string;
@@ -22,7 +25,7 @@ const ACTIVE_STATUSES = ["PLACED", "AWAITING_RUNNER", "ASSIGNED", "OUT_FOR_DELIV
 export async function getActiveOrders(db: SupabaseClient<Database>): Promise<AdminOrderRow[]> {
   const { data, error } = await db
     .from("orders")
-    .select("id, order_number, fulfillment_status, payment_status, contact_name, total_cents, currency, placed_at, beaches(name), delivery_zones(name)")
+    .select("id, order_number, fulfillment_status, payment_status, contact_name, contact_phone, landmark_text, customer_description, total_cents, currency, placed_at, beaches(name), delivery_zones(name)")
     .in("fulfillment_status", ACTIVE_STATUSES)
     .order("placed_at", { ascending: false })
     .limit(100);
@@ -34,6 +37,9 @@ export async function getActiveOrders(db: SupabaseClient<Database>): Promise<Adm
     fulfillmentStatus: o.fulfillment_status,
     paymentStatus: o.payment_status,
     contactName: o.contact_name,
+    contactPhone: o.contact_phone,
+    landmarkText: o.landmark_text,
+    customerDescription: o.customer_description,
     totalCents: o.total_cents,
     currency: o.currency,
     placedAt: o.placed_at,

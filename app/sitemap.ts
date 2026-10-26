@@ -3,7 +3,7 @@ import { siteUrl } from "@/lib/brand";
 
 /* Phase 1: the static marketing surface. City and beach pages join this in
    Phase 2, generated from the geography tables. */
-const routes = ["", "/how-it-works", "/build-your-coco", "/partners", "/contact", "/refunds", "/privacy", "/terms"];
+const routes = ["", "/how-it-works", "/partners", "/contact", "/refunds", "/privacy", "/terms"];
 
 export default function sitemap(): MetadataRoute.Sitemap {
   const now = new Date();

@@ -3,6 +3,7 @@ import { getSettings } from "@/lib/settings";
 import { assertFulfillmentTransition, assertPaymentTransition } from "@/lib/orders/state";
 import { refundOrderInFull } from "@/lib/payments/refund";
 import { sendNotification } from "@/lib/notifications/transport";
+import { releaseOrderStock } from "@/lib/orders/stock";
 
 export interface ExpirySummary {
   expired: number;
@@ -52,6 +53,7 @@ export async function expireStaleOrders(now = new Date()): Promise<ExpirySummary
       .select("id");
     if (!won?.length) continue;
     summary.expired++;
+    await releaseOrderStock(order.id);
 
     await db
       .from("order_offers")
@@ -103,7 +105,10 @@ export async function expireStaleOrders(now = new Date()): Promise<ExpirySummary
       .eq("fulfillment_status", "PLACED")
       .eq("payment_status", "UNPAID")
       .select("id");
-    if (won?.length) summary.abandonedUnpaid++;
+    if (won?.length) {
+      summary.abandonedUnpaid++;
+      await releaseOrderStock(order.id);
+    }
   }
 
   return summary;

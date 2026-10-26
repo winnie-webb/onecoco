@@ -16,7 +16,7 @@ export interface SendEmailResult {
 }
 
 /** Pure — no network. Exported so the request shape can be unit tested. */
-export function buildResendRequest(to: string, content: EmailContent, from: string): { url: string; init: RequestInit } {
+export function buildResendRequest(to: string | string[], content: EmailContent, from: string): { url: string; init: RequestInit } {
   return {
     url: "https://api.resend.com/emails",
     init: {
@@ -34,7 +34,7 @@ export function isEmailConfigured(): boolean {
   return Boolean(process.env.RESEND_API_KEY && process.env.RESEND_FROM);
 }
 
-export async function sendEmail(to: string, content: EmailContent): Promise<SendEmailResult> {
+export async function sendEmail(to: string | string[], content: EmailContent): Promise<SendEmailResult> {
   if (!isEmailConfigured()) return { ok: false, error: "RESEND_API_KEY/RESEND_FROM not configured" };
 
   const { url, init } = buildResendRequest(to, content, process.env.RESEND_FROM!);

@@ -14,6 +14,7 @@ export interface OrderDetail {
   fulfillmentStatus: FulfillmentStatus;
   landmarkText: string | null;
   customerDescription: string | null;
+  contactName: string | null;
   contactPhone: string | null;
   totalCents: number;
   currency: string;
@@ -103,9 +104,27 @@ export function ActiveDelivery({ order: initialOrder }: { order: OrderDetail }) 
       )}
 
       <div className="mt-4 rounded-card border-2 border-sand-200 p-4">
-        {order.landmarkText && <p className="text-sm">Landmark: {order.landmarkText}</p>}
+        {order.contactName && <p className="font-semibold">{order.contactName}</p>}
+        {order.landmarkText && <p className="mt-1 text-sm">Landmark: {order.landmarkText}</p>}
         {order.customerDescription && <p className="mt-1 text-sm">Look for: {order.customerDescription}</p>}
-        {order.contactPhone && <p className="mt-1 text-sm">Phone: {order.contactPhone}</p>}
+        <div className="mt-3 flex gap-2">
+          <a
+            href={`/api/v1/runner/orders/${order.orderId}/map`}
+            target="_blank"
+            rel="noopener"
+            className="flex min-h-11 flex-1 items-center justify-center rounded-full border-2 border-jungle-800 text-sm font-semibold text-jungle-800"
+          >
+            Open map
+          </a>
+          {order.contactPhone && (
+            <a
+              href={`tel:${order.contactPhone.replace(/[^\d+]/g, "")}`}
+              className="flex min-h-11 flex-1 items-center justify-center rounded-full border-2 border-jungle-800 text-sm font-semibold text-jungle-800"
+            >
+              Call {order.contactPhone}
+            </a>
+          )}
+        </div>
       </div>
 
       {error && <p className="mt-4 font-medium text-red-700">{error}</p>}

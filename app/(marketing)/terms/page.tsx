@@ -40,12 +40,6 @@ export default function Page() {
         See our <a href="/refunds">refunds &amp; cancellations</a> page.
       </p>
 
-      <h2>Personalised coconuts</h2>
-      <p>
-        Names and messages you add are printed or written on your coconut. We may refuse text that is offensive or
-        infringes someone else&rsquo;s rights, and refund that part of the order.
-      </p>
-
       <h2>Our responsibility</h2>
       <p>
         We prepare every coconut fresh and handle it hygienically. Nothing in these terms limits rights you have under

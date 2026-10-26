@@ -8,7 +8,6 @@ const columns = [
     title: "Order",
     links: [
       { href: "/order", label: brand.cta },
-      { href: "/build-your-coco", label: "Build Your Coco" },
       { href: "/how-it-works", label: "How It Works" },
     ],
   },

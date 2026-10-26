@@ -5,11 +5,22 @@ export interface EmailContent {
   html: string;
 }
 
-export function orderConfirmationEmail(data: { orderNumber: number; totalCents: number; trackUrl?: string }): EmailContent {
+export function orderConfirmationEmail(data: {
+  orderNumber: number;
+  totalCents: number;
+  trackUrl?: string;
+  awaitingPayment?: boolean;
+}): EmailContent {
   const total = `US$${(data.totalCents / 100).toFixed(2)}`;
   const track = data.trackUrl
     ? `<p><a href="${data.trackUrl}">Track your order</a> — keep this email, it's the way back if you close the page.</p>`
     : "<p>Track it any time from the link on your confirmation page.</p>";
+  if (data.awaitingPayment) {
+    return {
+      subject: `${brand.name} — order #${data.orderNumber} received`,
+      html: `<p>We've got your order #${data.orderNumber} for ${total}. As soon as your payment goes through we'll send a runner — you'll get another email when it does.</p>${track}`,
+    };
+  }
   return {
     subject: `${brand.name} — order #${data.orderNumber} confirmed`,
     html: `<p>Thanks — we've got your order #${data.orderNumber} for ${total}.</p>${track}`,

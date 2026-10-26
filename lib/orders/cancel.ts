@@ -1,6 +1,7 @@
 import { serviceClient } from "@/lib/db/client";
 import { assertFulfillmentTransition } from "@/lib/orders/state";
 import { refundOrderInFull, type RefundResult } from "@/lib/payments/refund";
+import { releaseOrderStock } from "@/lib/orders/stock";
 
 export class CancelError extends Error {
   constructor(
@@ -37,6 +38,19 @@ export async function cancelOrderAsOps(orderId: string, reason: string, actorUse
     .eq("id", orderId)
     .eq("fulfillment_status", order.fulfillment_status);
   if (updateError) throw new CancelError(`could not cancel order: ${updateError.message}`, "INTERNAL");
+
+  // Take it off runners' offer lists (offers stay open up to an hour).
+  await db
+    .from("order_offers")
+    .update({ response: "EXPIRED", responded_at: new Date().toISOString() })
+    .eq("order_id", orderId)
+    .is("response", null);
+
+  // Not picked up yet: the coconut is still in the cooler, back into stock.
+  // Once it's out for delivery it's been cut open — it stays counted as used.
+  if (order.fulfillment_status === "PLACED" || order.fulfillment_status === "AWAITING_RUNNER" || order.fulfillment_status === "ASSIGNED") {
+    await releaseOrderStock(orderId);
+  }
 
   // Uncollected cash: nothing to give back, but the debt is gone too.
   await db.from("orders").update({ payment_status: "VOIDED" }).eq("id", orderId).eq("payment_status", "CASH_DUE");

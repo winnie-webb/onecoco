@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { requireRunnerApi } from "@/lib/auth/runner-guards";
 import { serviceClient } from "@/lib/db/client";
+import { offerWaitingOrdersToRunner } from "@/lib/dispatch/offers";
 
 export const dynamic = "force-dynamic";
 
@@ -22,6 +23,9 @@ export async function POST() {
   }
 
   await db.from("runners").update({ shift_status: "AVAILABLE", device_last_seen_at: new Date().toISOString() }).eq("id", session.runnerId);
+
+  // Orders paid while nobody was on shift were offered to no one.
+  await offerWaitingOrdersToRunner(session.runnerId, session.homeBeachId);
 
   return NextResponse.json({ ok: true });
 }

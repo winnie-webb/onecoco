@@ -13,15 +13,6 @@ export const menuPreview = [
     priceLabel: "US$7",
     blurb: "One fresh Jamaican coconut, opened cold and handed to you with a straw.",
     includes: ["Fresh coconut", "Opened on the spot", "Straw"],
-    featured: false,
-  },
-  {
-    slug: "build-your-coco",
-    name: "Build Your Coco",
-    priceLabel: "from US$9",
-    blurb:
-      "Put a name, a message and a design on it. The one that ends up on the grid.",
-    includes: ["Everything in Classic", "Your name", "Your message", "Choose a design"],
     featured: true,
   },
   {

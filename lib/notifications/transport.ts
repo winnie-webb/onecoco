@@ -7,7 +7,12 @@ type NotificationChannel = Database["public"]["Enums"]["notification_channel"];
 
 const TEMPLATES: Record<string, (data: Record<string, unknown>) => { subject: string; html: string }> = {
   order_confirmation: (data) =>
-    orderConfirmationEmail({ orderNumber: data.orderNumber as number, totalCents: data.totalCents as number, trackUrl: data.trackUrl as string | undefined }),
+    orderConfirmationEmail({
+      orderNumber: data.orderNumber as number,
+      totalCents: data.totalCents as number,
+      trackUrl: data.trackUrl as string | undefined,
+      awaitingPayment: Boolean(data.awaitingPayment),
+    }),
   payment_confirmation: (data) => paymentConfirmationEmail({ orderNumber: data.orderNumber as number }),
   order_delivered: (data) => orderDeliveredEmail({ orderNumber: data.orderNumber as number, totalCents: data.totalCents as number }),
   order_expired: (data) =>

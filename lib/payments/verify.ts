@@ -3,7 +3,8 @@ import type { Json } from "@/lib/db/types";
 import { getProvider } from "@/lib/payments";
 import { assertFulfillmentTransition, assertPaymentTransition } from "@/lib/orders/state";
 import { sendNotification } from "@/lib/notifications/transport";
-import { createOffersForOrder } from "@/lib/dispatch/offers";
+import { dispatchOrder } from "@/lib/dispatch/offers";
+import { releaseOrderStock } from "@/lib/orders/stock";
 import { getSettings } from "@/lib/settings";
 
 export class CaptureError extends Error {
@@ -81,6 +82,7 @@ export async function captureAndApply(paymentId: string, providerRefFromClient?:
     await db.from("payments").update({ status: "FAILED", raw: outcome.raw as NonNullable<Json> }).eq("id", payment.id);
     assertPaymentTransition(order.payment_status, "FAILED");
     await db.from("orders").update({ payment_status: "FAILED" }).eq("id", order.id).eq("payment_status", order.payment_status);
+    await releaseOrderStock(order.id);
     throw new CaptureError(`payment failed: ${outcome.reason}`, "PAYMENT_FAILED");
   }
 
@@ -136,7 +138,7 @@ export async function captureAndApply(paymentId: string, providerRefFromClient?:
       .eq("id", order.id)
       .eq("fulfillment_status", "PLACED");
     const isDispatchableNow = !order.scheduled_for || new Date(order.scheduled_for).getTime() <= Date.now();
-    if (isDispatchableNow) await createOffersForOrder(order.id);
+    if (isDispatchableNow) await dispatchOrder(order.id);
   }
 
   const { data: customer } = await db.from("orders").select("contact_email, order_number").eq("id", order.id).single();

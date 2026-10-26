@@ -7,7 +7,6 @@ import { Container } from "@/components/ui/Container";
 const nav = [
   { href: "/#cocos", label: "Cocos" },
   { href: "/how-it-works", label: "How It Works" },
-  { href: "/build-your-coco", label: "Build Your Coco" },
   { href: "/partners", label: "Partners" },
 ];
 

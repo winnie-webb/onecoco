@@ -33,8 +33,8 @@ Montego Bay, Jamaica.
 | `lib/notifications/` | Email (Resend, unverified live) + console-sink fallback, templates. |
 | `proxy.ts` | Refreshes the staff/runner/partner auth session cookie on `/admin/*`, `/runner/*`, `/partner/*` (this Next.js version's renamed `middleware.ts`). |
 | `app/api/v1/system/sweep/route.ts` | Scheduled sweep (`vercel.json`'s cron, `Bearer $CRON_SECRET`) — promotes scheduled group orders past due, truncates stale exact locations to zone level (§17). |
-| `supabase/migrations/` | Schema. 20 migrations, applied in filename order. |
-| `supabase/seed/jamaica.sql` | Montego Bay pilot configuration — two beaches (Doctor's Cave, Walter Fletcher), both seeded `CLOSED`. Idempotent. |
+| `supabase/migrations/` | Schema. 22 migrations, applied in filename order. |
+| `supabase/seed/jamaica.sql` | Montego Bay configuration — Harmony Beach Park (pilot, `OPEN`, 50 coconuts); Doctor's Cave and Walter Fletcher seeded `CLOSED`. Idempotent. |
 
 ## Running it
 
@@ -68,6 +68,7 @@ uses 3100. `npm run dev` on its own uses 3000 as normal.
 | 9 — Partners, QR attribution, group orders | Done. Admin partner management + invite; partner portal (dashboard, printable QR codes, group/scheduled orders); QR-attributed checkout; commission calculation. Found and fixed a fourth cross-phase RLS gap (`partner_users`) and a scheduled-order dispatch-gating bug, both before/via live end-to-end testing. `PHASE-9-NOTES.md`. |
 | 10 — Analytics + pilot hardening | Done for everything not gated on §27.1 (pilot beach + permission, still open, still blocking an actual launch). Real operational dashboard at `/admin/analytics`; rate limiting closed on `/orders`/`/quote`/`/demand` (only `/track` had it before); a scheduled sweep promotes overdue group orders and truncates stale exact locations to zone level (§17) — both gaps named as "Phase 10" in earlier notes. `PHASE-10-NOTES.md`. |
 | 11 — Multi-beach expansion | **Done.** Added a real second beach (Walter Fletcher Beach) as a pure seed INSERT, proving §25's "config only, no rewrite" claim rather than just asserting it — placed real orders at both beaches and confirmed dispatch never crosses beach lines. Found and fixed the one real single-beach hardcode (`/admin/map`, now a beach switcher). `PHASE-11-NOTES.md`. |
+| Pilot — Harmony Beach Park | **Ready to deploy.** Pilot beach open with 50 coconuts, real stock counting, new-order alerts to the team, maps/call links, longer accept window, no-GPS ordering, personalisation paused. `PILOT-LAUNCH.md`. |
 
 **Roadmap complete (Phases 2–11)** to the extent each doesn't depend on a human-only decision still open — see §27 in `docs/ARCHITECTURE.md`, most centrally §27.1 (which beach, and is permission secured), named by multiple phases' notes as the one blocker no amount of further engineering resolves.
 

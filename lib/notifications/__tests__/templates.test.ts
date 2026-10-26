@@ -7,6 +7,12 @@ describe("order email templates", () => {
     expect(email.html).toContain('href="https://x.test/track/abc"');
   });
 
+  it("doesn't call an unpaid card order confirmed", () => {
+    const email = orderConfirmationEmail({ orderNumber: 1001, totalCents: 900, awaitingPayment: true });
+    expect(email.subject).not.toContain("confirmed");
+    expect(email.html).toContain("As soon as your payment goes through");
+  });
+
   it("sends a receipt, not a confirmation, on delivery", () => {
     const email = orderDeliveredEmail({ orderNumber: 1001, totalCents: 1200 });
     expect(email.subject).toContain("delivered");
