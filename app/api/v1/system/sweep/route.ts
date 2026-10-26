@@ -8,10 +8,10 @@ import { alert } from "@/lib/monitoring/alert";
 export const dynamic = "force-dynamic";
 
 /**
- * Phase 10 pilot hardening. No pg_cron/job runner exists in this stack, so
- * this is the one endpoint a scheduler calls (`vercel.json`'s cron entry,
- * which sends `Authorization: Bearer $CRON_SECRET` automatically — a
- * manual call needs the same header). Closes two gaps flagged as "Phase 10
+ * Phase 10 pilot hardening. The one endpoint a scheduler calls: pg_cron
+ * every 5 minutes (migration 0023, bearer token from Supabase Vault) and
+ * `vercel.json`'s daily backstop (Vercel sends `Authorization: Bearer
+ * $CRON_SECRET` automatically) — a manual call needs the same header. Closes two gaps flagged as "Phase 10
  * additions" in earlier phase notes:
  *
  * 1. Promote scheduled group orders (§9) once their time arrives —

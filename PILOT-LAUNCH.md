@@ -44,9 +44,11 @@ start, and the anon-key lockdown on the new functions.
 ## Go-live steps
 
 1. Merge this branch into `main` (it carries the whole working app).
-2. Supabase (Pro): `npx supabase link --project-ref <ref> && npx supabase db push`,
-   then run `supabase/seed/jamaica.sql` once.
-3. Vercel (Pro — the sweep runs every 5 minutes): set every variable in
+2. Supabase: `npx supabase link --project-ref <ref> && npx supabase db push`,
+   then run `supabase/seed/jamaica.sql` once. Then put the sweep's URL and
+   `CRON_SECRET` in Vault (SQL in migration 0023) so pg_cron runs the sweep
+   every 5 minutes.
+3. Vercel (Hobby is enough — its cron is only a daily backstop): set every variable in
    `.env.example`, especially `NEXT_PUBLIC_SITE_URL` (the real https domain),
    `CRON_SECRET`, `ORDER_ALERT_WEBHOOK_URL` and/or `ORDER_ALERT_EMAILS`,
    `NEXT_PUBLIC_CONTACT_*`, and for card payments `PAYPAL_*` with
