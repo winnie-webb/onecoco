@@ -76,7 +76,12 @@ export async function POST(request: Request) {
     };
 
     if (!serviceability.serviceable) {
-      return NextResponse.json({ ...base, serviceable: false, reason: serviceability.reason });
+      return NextResponse.json({
+        ...base,
+        serviceable: false,
+        reason: serviceability.reason,
+        hoursToday: serviceability.hoursToday ?? null,
+      });
     }
 
     const eta = await computeEta(zone, lng, lat, settings);

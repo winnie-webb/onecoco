@@ -16,6 +16,7 @@ export type FunnelEvent =
   | "get_coco_click"
   | "location_granted"
   | "location_denied"
+  | "location_failed"
   | "manual_beach_selected"
   | "in_zone"
   | "out_of_zone"
