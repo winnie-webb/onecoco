@@ -53,7 +53,6 @@ export function CheckoutFlow({
 
   const [name, setName] = useState("");
   const [landmarkText, setLandmarkText] = useState("");
-  const [customerDescription, setCustomerDescription] = useState("");
   const [paymentProvider, setPaymentProvider] = useState<CardProvider | "cash">(cardProvider ?? "cash");
 
   async function requestQuote(item: CartItem) {
@@ -94,7 +93,6 @@ export function CheckoutFlow({
           clientIdempotencyKey,
           contact: { name },
           landmarkText: landmarkText || undefined,
-          customerDescription: customerDescription || undefined,
           location: manualLocation ? undefined : { lat, lng, accuracyM: accuracyM ?? undefined },
           paymentProvider,
           qrCode,
@@ -211,27 +209,18 @@ export function CheckoutFlow({
             className="min-h-11 w-full rounded-full border-2 border-sand-200 px-4 text-base"
           />
         </Field>
-        <Field
-          label={
-            manualLocation
-              ? "Where are you? (e.g. by the lifeguard tower, blue umbrella) *"
-              : "Landmark (e.g. blue umbrella near the jerk stand)"
-          }
-        >
-          <input
-            required={manualLocation}
-            value={landmarkText}
-            onChange={(e) => setLandmarkText(e.target.value)}
-            className="min-h-11 w-full rounded-full border-2 border-sand-200 px-4 text-base"
-          />
-        </Field>
-        <Field label="What you look like (e.g. red hat, two kids) — this finds you faster than GPS does">
-          <input
-            value={customerDescription}
-            onChange={(e) => setCustomerDescription(e.target.value)}
-            className="min-h-11 w-full rounded-full border-2 border-sand-200 px-4 text-base"
-          />
-        </Field>
+        {/* With a GPS fix the pin is where they are; without one (picked the
+            beach by hand) the runner needs it in words. */}
+        {manualLocation && (
+          <Field label="Where are you? (e.g. by the lifeguard tower, blue umbrella)">
+            <input
+              required
+              value={landmarkText}
+              onChange={(e) => setLandmarkText(e.target.value)}
+              className="min-h-11 w-full rounded-full border-2 border-sand-200 px-4 text-base"
+            />
+          </Field>
+        )}
 
         <fieldset>
           <legend className="mb-2 text-sm font-bold uppercase tracking-wide text-ink-soft">Pay with</legend>
