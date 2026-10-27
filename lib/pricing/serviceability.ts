@@ -78,6 +78,7 @@ export function formatHoursToday(hours: unknown, now: Date, timezone: string): s
   const today = todaysWindows(hours, now, timezone);
   if (!today) return undefined;
   if (today.windows.length === 0) return null;
+  if (today.windows.some(([start, end]) => toMinutes(start) === 0 && toMinutes(end) >= 23 * 60 + 59)) return "all day";
   return today.windows.map(([start, end]) => `${formatClock(start)}–${formatClock(end)}`).join(", ");
 }
 

@@ -29,4 +29,9 @@ describe("formatHoursToday", () => {
       "8:30am–12pm, 1:15pm–11:59pm",
     );
   });
+
+  it("says all day for a 24-hour schedule", () => {
+    const hours = { tue: [["00:00", "23:59"]] };
+    expect(formatHoursToday(hours, new Date("2026-10-27T14:00:00Z"), "America/Jamaica")).toBe("all day");
+  });
 });
