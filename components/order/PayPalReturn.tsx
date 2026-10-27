@@ -75,11 +75,11 @@ export function PayPalReturn({ providerRef, cancelled }: { providerRef: string |
     capturing: { title: "Finishing your payment…", text: "Don't close this page — it only takes a moment." },
     "paid-no-link": {
       title: "Payment received",
-      text: "Your order is placed. We've emailed you a link to track it — the runner will show you your delivery code.",
+      text: "Your order is placed — the runner will show you your delivery code.",
     },
     pending: {
       title: "Payment processing",
-      text: "PayPal is still confirming your payment. We'll email you as soon as it clears, and send a runner then.",
+      text: "PayPal is still confirming your payment. We'll send a runner as soon as it clears.",
     },
     failed: {
       title: "Payment didn't go through",

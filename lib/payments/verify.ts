@@ -142,12 +142,12 @@ export async function captureAndApply(paymentId: string, providerRefFromClient?:
   }
 
   const { data: customer } = await db.from("orders").select("contact_email, order_number").eq("id", order.id).single();
-  if (customer) {
+  if (customer?.contact_email) {
     await sendNotification({
       orderId: order.id,
       channel: "EMAIL",
       template: "payment_confirmation",
-      recipient: customer.contact_email ?? "",
+      recipient: customer.contact_email,
       data: { orderNumber: customer.order_number },
     });
   }

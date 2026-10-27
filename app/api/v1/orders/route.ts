@@ -56,8 +56,10 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "quoteId and clientIdempotencyKey are required" }, { status: 400 });
   }
   const contact = body.contact;
-  if (!contact || !isNonEmptyString(contact.name) || !isNonEmptyString(contact.phone) || !isNonEmptyString(contact.email)) {
-    return NextResponse.json({ error: "contact.name, contact.phone and contact.email are required" }, { status: 400 });
+  // Name and where they are is all a beach delivery needs; phone and email
+  // are optional extras (a number to call, an emailed tracking link).
+  if (!contact || !isNonEmptyString(contact.name)) {
+    return NextResponse.json({ error: "contact.name is required" }, { status: 400 });
   }
   // Cash always; a card provider only if it's the one this deployment
   // offers — never "mock" in production, never "paypal" unconfigured, so a
@@ -81,7 +83,11 @@ export async function POST(request: Request) {
     const order = await createOrder({
       quoteId: body.quoteId,
       clientIdempotencyKey: body.clientIdempotencyKey,
-      contact: { name: contact.name.trim(), phone: contact.phone.trim(), email: contact.email.trim() },
+      contact: {
+        name: contact.name.trim(),
+        phone: isNonEmptyString(contact.phone) ? contact.phone.trim() : undefined,
+        email: isNonEmptyString(contact.email) ? contact.email.trim() : undefined,
+      },
       landmarkText: isNonEmptyString(body.landmarkText) ? body.landmarkText : undefined,
       customerDescription: isNonEmptyString(body.customerDescription) ? body.customerDescription : undefined,
       deliveryNote: isNonEmptyString(body.deliveryNote) ? body.deliveryNote : undefined,

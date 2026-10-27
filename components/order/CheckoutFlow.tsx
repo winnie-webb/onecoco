@@ -52,8 +52,6 @@ export function CheckoutFlow({
   const [error, setError] = useState<string | null>(null);
 
   const [name, setName] = useState("");
-  const [phone, setPhone] = useState("");
-  const [email, setEmail] = useState("");
   const [landmarkText, setLandmarkText] = useState("");
   const [customerDescription, setCustomerDescription] = useState("");
   const [paymentProvider, setPaymentProvider] = useState<CardProvider | "cash">(cardProvider ?? "cash");
@@ -94,7 +92,7 @@ export function CheckoutFlow({
         body: JSON.stringify({
           quoteId: quote.quoteId,
           clientIdempotencyKey,
-          contact: { name, phone, email },
+          contact: { name },
           landmarkText: landmarkText || undefined,
           customerDescription: customerDescription || undefined,
           location: manualLocation ? undefined : { lat, lng, accuracyM: accuracyM ?? undefined },
@@ -130,7 +128,7 @@ export function CheckoutFlow({
           }
           // Leaving the site. The return page finishes the capture and
           // needs the track token to land the customer on their order; if
-          // this storage is lost the order email still carries the link.
+          // this storage is lost the return page falls back to PayPal's token.
           try {
             sessionStorage.setItem(
               PAYPAL_PENDING_KEY,
@@ -210,24 +208,6 @@ export function CheckoutFlow({
             required
             value={name}
             onChange={(e) => setName(e.target.value)}
-            className="min-h-11 w-full rounded-full border-2 border-sand-200 px-4 text-base"
-          />
-        </Field>
-        <Field label="Phone">
-          <input
-            required
-            type="tel"
-            value={phone}
-            onChange={(e) => setPhone(e.target.value)}
-            className="min-h-11 w-full rounded-full border-2 border-sand-200 px-4 text-base"
-          />
-        </Field>
-        <Field label="Email">
-          <input
-            required
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
             className="min-h-11 w-full rounded-full border-2 border-sand-200 px-4 text-base"
           />
         </Field>

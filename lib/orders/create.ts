@@ -24,7 +24,7 @@ export class OrderCreationError extends Error {
 export interface CreateOrderInput {
   quoteId: string;
   clientIdempotencyKey: string;
-  contact: { name: string; phone: string; email: string };
+  contact: { name: string; phone?: string; email?: string };
   landmarkText?: string;
   customerDescription?: string;
   deliveryNote?: string;
@@ -129,15 +129,20 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
     .limit(1)
     .maybeSingle();
 
-  const email = input.contact.email.trim().toLowerCase();
+  // No email means no way to recognise a returning guest: each such order
+  // gets its own customer row.
+  const email = input.contact.email?.trim().toLowerCase() || null;
+  const phone = input.contact.phone || null;
   let customerId: string;
-  const { data: existingCustomer } = await db.from("customers").select("id").ilike("email", email).maybeSingle();
+  const { data: existingCustomer } = email
+    ? await db.from("customers").select("id").ilike("email", email).maybeSingle()
+    : { data: null };
   if (existingCustomer) {
     customerId = existingCustomer.id;
   } else {
     const { data: newCustomer, error: customerError } = await db
       .from("customers")
-      .insert({ email, phone: input.contact.phone, name: input.contact.name })
+      .insert({ email, phone, name: input.contact.name })
       .select("id")
       .single();
     if (customerError || !newCustomer) throw new OrderCreationError("could not create customer", "INTERNAL");
@@ -184,7 +189,7 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
       total_cents: fresh.totalCents,
       currency: fresh.currency,
       contact_name: input.contact.name,
-      contact_phone: input.contact.phone,
+      contact_phone: phone,
       contact_email: email,
       landmark_text: input.landmarkText ?? null,
       customer_description: input.customerDescription ?? null,
@@ -266,20 +271,22 @@ export async function createOrder(input: CreateOrderInput): Promise<CreatedOrder
     await dispatchOrder(order.id);
   }
 
-  await sendNotification({
-    orderId: order.id,
-    channel: "EMAIL",
-    template: "order_confirmation",
-    recipient: email,
-    data: {
-      orderNumber: order.order_number,
-      totalCents: fresh.totalCents,
-      trackUrl: `${siteUrl}/track/${trackToken}`,
-      // Card orders get this before PayPal: say so, rather than
-      // "confirmed" for an order that may never be paid.
-      awaitingPayment: !isCash,
-    },
-  });
+  if (email) {
+    await sendNotification({
+      orderId: order.id,
+      channel: "EMAIL",
+      template: "order_confirmation",
+      recipient: email,
+      data: {
+        orderNumber: order.order_number,
+        totalCents: fresh.totalCents,
+        trackUrl: `${siteUrl}/track/${trackToken}`,
+        // Card orders get this before PayPal: say so, rather than
+        // "confirmed" for an order that may never be paid.
+        awaitingPayment: !isCash,
+      },
+    });
+  }
 
   return {
     orderId: order.id,
